@@ -1,0 +1,23 @@
+# Dependencies, build output and private runtime data.
+**/node_modules/
+**/target/
+**/dist/
+**/.angular/
+**/test-results/
+**/playwright-report/
+.git/
+.env
+secrets/
+**/package-lock.json
+
+# Third-party source and generated or illustrated assets.
+.agents/
+scrollcraft/
+frontend/public/experience/vendor/
+frontend/public/experience/reel-world.js
+frontend/public/art/
+frontend/public/favicon.svg
+
+# Prose has its own intentional formatting.
+docs/
+README.md

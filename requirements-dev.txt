@@ -1,0 +1,2 @@
+# Formatter for the optional Python API test script.
+ruff==0.16.6

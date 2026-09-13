@@ -1,0 +1,9 @@
+.git
+.env
+secrets
+**/node_modules
+**/target
+**/dist
+**/.angular
+test-results
+playwright-report

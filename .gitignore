@@ -1,0 +1,19 @@
+.env
+.env.*
+!.env.example
+secrets/
+**/__pycache__/
+**/.ruff_cache/
+.venv/
+**/target/
+**/node_modules/
+**/dist/
+# Recreated from frontend/src/cinema/reel-world.js by npm run build/start.
+frontend/public/experience/reel-world.js
+**/.angular/
+playwright-report/
+test-results/
+scrollcraft/lab/
+*.log
+.idea/
+.vscode/

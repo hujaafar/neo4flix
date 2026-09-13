@@ -1,0 +1,33 @@
+# Neo4flix: reference-led motion revision
+
+The user's supplied video called for much larger object movement than the first implementation. This revision replaces the opening with an actual 3D film reel, a travelling perforated film strip and a camera transition through the reel's centre. It runs on both the public entrance and Angular Discover. The original olive/lime identity remains under the user's earlier creative delegation, “up to u”.
+
+The new feeling curve is anticipation, discovery, immersion and agency. The remembered moment is travelling through the reel into the film's landscape. The page then changes device: separately selectable film prints, genre choice, and account access. This supersedes the earlier report's poster-fan peak and static mobile opening. The revision brief is `REFERENCE-REVISION.md`.
+
+## Implementation
+
+Three.js 0.186.0 renders extruded metal reel plates, a central aperture, curved textured film mesh, studio lighting and atmosphere. A separate scenic image supplies the landscape. Scroll progress drives more than five radians of reel rotation and a camera move from approximately 8 scene units to 0.12. Pointer movement adds independent depth. The final headline appears after the camera clears the aperture.
+
+`frontend/src/cinema/reel-world.js` is the shared source. The prebuild script bundles a local ES module with esbuild; Angular loads it outside change detection and disposes its frame loop, observers, listeners, textures, geometry and renderer when the component leaves. Offscreen and hidden documents stop rendering. Mobile keeps the real motion with a portrait composition and capped pixel ratio. Pause, live reduced-motion changes, direct catalogue access, and context-loss fallback are supported. Static desktop/mobile plates were captured from the actual finished scene.
+
+The upstream ScrollCraft runtime is unchanged and mounted once in the entrance document. Its remaining collection, genre and account sections retain their interactions. The strict CSP and HTTPS setup were preserved. No browser script exception or third-party runtime request is needed. Build dependencies are recorded in package-lock.json; both MIT licenses are included.
+
+## Verification on 9 September 2026
+
+- All 12 browser scenarios are now passing across desktop and mobile, including registration, genre preservation, real film destinations, search, ratings, watchlists, sharing, reload persistence and account deletion.
+- The motion tests check large rotation and camera-distance changes on both viewports, different pointer-rendered pixels, pause/resume, keyboard skip, runtime reduced motion, 360 × 640 layout, no JavaScript, forced WebGL context loss, and Angular disposal after filtering removes the feature.
+- One long desktop screenshot test reached its original 60-second time limit. The test allowance was increased and continuous trace screenshots disabled; its unchanged assertions passed on a targeted rerun in 54.8 seconds. The other 11 tests passed in the preceding run. An earlier heading assertion was updated for the new accessible title.
+- The upstream harness sampled 58 frames: 21 desktop, 21 mobile, 16 reduced-motion. No browser errors, failed requests or detected dead scroll. Contact sheets and opening, rotation, aperture, closing and authenticated compositions were inspected. The harness does not measure contrast for this custom canvas, so no automated accessibility certification is claimed.
+- Normal certificate verification succeeded in installed Chrome during harness capture and recording. The regression suite keeps its isolated local-development certificate option. OS and application security settings were not weakened.
+- Production Angular build and local Docker frontend rebuild passed. Angular's initial bundle is about 289 kB before compression; the 3D renderer is loaded separately. Nginx syntax and running container readiness were checked. Dependency installation reported zero known npm vulnerabilities.
+- The deliverable `Neo4flix-motion.mp4` is an H.264 recording of the deployed browser, trimmed to remove startup and pointer setup. It is evidence of the live interaction, not the animation implementation.
+
+The desktop/browser checks do not establish performance on a physical phone or every GPU. WebGL creation failure and context loss use the captured composition. There was no public deployment or git push. The backend was unchanged; previous six unit-test and 52 API-assertion results were not rerun for this frontend revision.
+
+## Asset provenance
+
+The landscape was generated with the built-in ImageGen tool from an original prompt, then encoded to WebP. Source: `C:/Users/MSI LAPTOP/.codex/generated_images/01a083b0-49ef-7c03-b7d7-8338241e362a/exec-6a248a87-75c9-4c1c-b43d-632c323841bb.png`. Packaged asset: `frontend/public/experience/assets/cinema-world.webp`. No KIE key was required because its generation pipeline was not used. The skill preflight passes required checks using the local full FFmpeg build; its optional KIE key remains unset. The upstream contact-sheet step does not discover that portable executable, so sheets were assembled with Pillow. FFmpeg successfully encoded the MP4.
+
+Generation prompt: “Use case: stylized-concept. Create a cinematic environment background plate for the Neo4flix movie discovery website, a widescreen 16:9 landscape, high resolution. Photorealistic film production matte painting: an immense quiet alien moon landscape, dark charcoal basalt dunes and jagged low ridges along the bottom 25 percent, distant fine atmospheric dust and mist in a muted olive grey, a huge softly illuminated pale ivory planet partially cut by the far right edge above the horizon, star field in a deep almost-black blue olive sky. A small distant warm light on the horizon suggests a new world. Sophisticated premium cinema title sequence, real rock grain, restrained light, impressive physical scale. Composition must leave the central and left upper two thirds dark and visually quiet for real HTML type and a separate live 3D film reel composited on top. Environment only: no film reel, no film strips, no posters, no astronaut, no person, no logos, no text, no frame, no purple or neon, no abstract gradient blobs. Do not create an interface or website screenshot. This is an original scenic clean plate that will move independently under a 3D object.”
+
+The reel geometry is original project code. Film-strip artwork comes from the existing Neo4flix SVG catalogue. The reference video was inspected locally to identify motion techniques; its footage, people, brands and embedded text were not copied into the application.

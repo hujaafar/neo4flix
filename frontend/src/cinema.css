@@ -1,0 +1,33 @@
+/* Accessible entrances for live Angular movie cards. */
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+:root {
+  accent-color: var(--accent);
+  caret-color: var(--accent);
+}
+.movie-card {
+  transition:
+    opacity 0.5s ease-out,
+    translate 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  translate: 0 0;
+}
+.movie-card.film-waiting {
+  opacity: 0;
+  translate: 0 14px;
+}
+.movie-card:focus-within {
+  opacity: 1;
+  translate: 0 0;
+}
+.movie-card:has(.poster-link:hover) h3 {
+  color: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .movie-card {
+    opacity: 1 !important;
+    translate: 0 0 !important;
+    transition: none !important;
+  }
+}

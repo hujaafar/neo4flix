@@ -1,0 +1,11 @@
+# Requires Docker Compose 2.24.4+ for !override. Apply only to your deployment host.
+services:
+  gateway:
+    ports: !override ['80:80', '443:443', '443:443/udp']
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set the production DNS hostname}
+      ACME_EMAIL: ${ACME_EMAIL:?Set the certificate contact email}
+    volumes: !override
+      - ./infra/Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config

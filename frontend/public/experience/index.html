@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A collection of films worth getting lost in. Discover movies, save your watchlist and find recommendations shaped by your taste."
+    />
+    <meta name="theme-color" content="#111210" />
+    <title>Neo4flix · Your cinema, unfolding</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="vendor/scrollcraft.css" />
+    <link rel="stylesheet" href="cinema.css" />
+    <link rel="stylesheet" href="reel-world.css" />
+    <script defer src="vendor/scrollcraft.js"></script>
+    <script defer src="cinema.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to films</a>
+    <header class="cinema-nav">
+      <a class="wordmark" href="/experience/" aria-label="Neo4flix entrance">
+        <span class="mark">N</span>
+        neo4flix
+        <span class="dot">.</span>
+      </a>
+      <nav aria-label="Film index">
+        <a href="#collection">The collection</a>
+        <a href="#genres">Find your mood</a>
+      </nav>
+      <a class="nav-entry" href="/login">
+        Enter Neo4flix
+        <span aria-hidden="true">↗</span>
+      </a>
+    </header>
+
+    <main id="main">
+      <section
+        class="reel-world"
+        id="interstellar"
+        data-sc-act="pin"
+        data-sc-span="3.1"
+        aria-labelledby="film-title"
+      >
+        <div class="reel-stage" data-sc-stage>
+          <img class="reel-landscape" src="assets/cinema-world.webp" alt="" fetchpriority="high" />
+          <picture class="reel-poster" aria-hidden="true">
+            <source media="(max-width:700px)" srcset="assets/reel-mobile.webp" />
+            <img src="assets/reel-desktop.webp" alt="" />
+          </picture>
+          <div class="reel-copy reel-copy-first">
+            <span class="reel-kicker">A WORLD OF STORIES</span>
+            <h1 id="film-title">
+              Every film.
+              <em>A new world.</em>
+            </h1>
+            <p>Find the stories that stay with you.</p>
+          </div>
+          <div class="reel-surface"></div>
+          <div class="reel-copy reel-copy-second" inert>
+            <h2>
+              Let a film
+              <br />
+              take you somewhere.
+            </h2>
+            <p>Tonight's spotlight: Interstellar.</p>
+            <a class="text-action" href="/movies/interstellar">
+              Explore the film
+              <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <div class="reel-controls">
+            <a class="reel-skip" href="#collection" data-reel-skip>
+              Browse the collection
+              <span aria-hidden="true">↗</span>
+            </a>
+            <button class="reel-pause" type="button" data-reel-pause disabled aria-pressed="false">
+              Pause motion
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="collection"
+        id="collection"
+        tabindex="-1"
+        data-sc-act="pin"
+        data-sc-span="2.1"
+        aria-labelledby="collection-title"
+      >
+        <div data-sc-stage>
+          <div class="collection-heading">
+            <h2 id="collection-title">
+              Good company
+              <br />
+              for a long evening.
+            </h2>
+            <p>
+              Three worlds from the collection.
+              <br />
+              Choose the one that pulls you in.
+            </p>
+          </div>
+          <div class="screening-stack">
+            <svg
+              class="connection-thread"
+              viewBox="0 0 1100 500"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path pathLength="1" d="M140 240C310 30 485 415 550 225S880 50 985 245" />
+            </svg>
+            <article class="screening-print print-left">
+              <a href="/movies/arrival" class="print-art" aria-label="Explore Arrival">
+                <div data-sc-tilt="5">
+                  <img
+                    src="/art/arrival.svg"
+                    width="400"
+                    height="600"
+                    alt="Original geometric Arrival illustration"
+                    loading="lazy"
+                  />
+                </div>
+              </a>
+              <div class="print-label">
+                <h3><a href="/movies/arrival">Arrival</a></h3>
+                <p>
+                  2016
+                  <span>Science Fiction · 116 min</span>
+                </p>
+              </div>
+            </article>
+            <article class="screening-print print-center">
+              <a href="/movies/interstellar" class="print-art" aria-label="Explore Interstellar">
+                <div data-sc-tilt="5">
+                  <img
+                    src="/art/interstellar.svg"
+                    width="400"
+                    height="600"
+                    alt="Original geometric Interstellar illustration"
+                    loading="lazy"
+                  />
+                </div>
+              </a>
+              <div class="print-label">
+                <h3><a href="/movies/interstellar">Interstellar</a></h3>
+                <p>
+                  2014
+                  <span>Science Fiction · 169 min</span>
+                </p>
+              </div>
+            </article>
+            <article class="screening-print print-right">
+              <a href="/movies/dune" class="print-art" aria-label="Explore Dune">
+                <div data-sc-tilt="5">
+                  <img
+                    src="/art/dune.svg"
+                    width="400"
+                    height="600"
+                    alt="Original geometric Dune illustration"
+                    loading="lazy"
+                  />
+                </div>
+              </a>
+              <div class="print-label">
+                <h3><a href="/movies/dune">Dune</a></h3>
+                <p>
+                  2021
+                  <span>Science Fiction · 155 min</span>
+                </p>
+              </div>
+            </article>
+          </div>
+          <a class="collection-link" href="/login?returnUrl=%2F">
+            View the full collection
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="genre-room" id="genres" data-sc-act="flow" aria-labelledby="genre-title">
+        <div class="genre-copy">
+          <h2 id="genre-title">Follow a feeling.</h2>
+          <p>
+            Some nights call for another universe.
+            <br />
+            Others, a little closer to home.
+          </p>
+          <fieldset class="genre-picker" disabled>
+            <legend>Choose a genre</legend>
+            <label>
+              <input type="radio" name="genre" value="Science Fiction" checked />
+              <span>Science Fiction</span>
+            </label>
+            <label>
+              <input type="radio" name="genre" value="Drama" />
+              <span>Drama</span>
+            </label>
+            <label>
+              <input type="radio" name="genre" value="Animation" />
+              <span>Animation</span>
+            </label>
+            <label>
+              <input type="radio" name="genre" value="Thriller" />
+              <span>Thriller</span>
+            </label>
+          </fieldset>
+          <a id="genre-destination" class="text-action" href="/?genre=Science%20Fiction">
+            Browse Science Fiction
+            <span aria-hidden="true">↗</span>
+          </a>
+          <noscript>
+            <p>
+              Genre selection needs JavaScript.
+              <a href="/login">Browse all films in the app</a>
+              .
+            </p>
+          </noscript>
+        </div>
+        <figure class="genre-art" data-sc-reveal="left" data-sc-reveal-at="0.05 0.3">
+          <div class="genre-art-frame">
+            <img
+              id="genre-image"
+              src="/art/arrival.svg"
+              width="400"
+              height="600"
+              alt="Original geometric Arrival illustration"
+              loading="lazy"
+            />
+          </div>
+          <figcaption id="genre-caption" aria-live="polite">
+            Arrival
+            <span>2016 · Science Fiction</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="entrance" id="enter" data-sc-act="flow" aria-labelledby="entrance-title">
+        <div class="entrance-copy" data-sc-in>
+          <span class="label">YOUR OWN KIND OF CINEMA</span>
+          <h2 id="entrance-title">
+            The next pick
+            <br />
+            is yours.
+          </h2>
+          <p>
+            Save the films you want to see. Rate the ones you love.
+            <br />
+            Find recommendations that grow with your taste.
+          </p>
+          <div class="entrance-actions">
+            <a class="ticket" href="/register">
+              Create your account
+              <span aria-hidden="true">↗</span>
+            </a>
+            <a class="text-action" href="/login">
+              Enter Neo4flix
+              <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </div>
+        <div class="entrance-stamp" aria-hidden="true">
+          <span>N</span>
+          <i></i>
+        </div>
+        <footer>
+          <a class="wordmark" href="/experience/">
+            neo4flix
+            <span class="dot">.</span>
+          </a>
+          <span>Good films. Better connections.</span>
+          <a href="#main">Back to the films ↑</a>
+        </footer>
+      </section>
+    </main>
+  </body>
+</html>

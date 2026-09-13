@@ -1,0 +1,33 @@
+server:
+  port: 8084
+  error:
+    include-message: never
+    include-stacktrace: never
+  shutdown: graceful
+spring:
+  application:
+    name: recommendation-service
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: neo4j
+      password: ${NEO4J_PASSWORD}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+app:
+  jwt-public-key: ${JWT_PUBLIC_KEY:/run/secrets/jwt-public.pem}
+  jwt-private-key: ${JWT_PRIVATE_KEY:/run/secrets/jwt-private.pem}
+  encryption-key: ${ENCRYPTION_KEY:}
+  origin: ${APP_ORIGIN:https://localhost:8443}
+  cookie-secure: ${COOKIE_SECURE:true}
+  bootstrap-admin-email: ${ADMIN_EMAIL:}
+  bootstrap-admin-password: ${ADMIN_PASSWORD:}
+  movie-url: ${MOVIE_URL:http://movie-service:8081}
+  rating-url: ${RATING_URL:http://rating-service:8083}
+  recommendation-url: ${RECOMMENDATION_URL:http://recommendation-service:8084}

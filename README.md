@@ -38,7 +38,7 @@ It is a movie recommendation application; movie playback is outside its scope. T
 | **Administer the catalogue** | Administrators can add, edit, and remove films. |
 | **Inspect the graph** | Administrators can explore live Movie, Genre and User nodes with rating values and timestamps. |
 
-The public entrance and signed-in Discover page share a real 3D reel, a moving film strip, and a camera transition through the reel's centre. Mobile has its own composition. Pause controls, reduced-motion preferences, keyboard access, and a static fallback keep the catalogue accessible.
+The public entrance and signed-in Discover page share a real 3D reel, a moving film strip, and a camera transition through the reel's centre. Mobile has its own composition. The reel stays animated while visible, including when the system requests reduced motion, and its pinned stage fills the current viewport without an empty strip below it. Keyboard skip links lead directly to the catalogue; a static fallback handles unavailable graphics. Other page transitions still respect reduced-motion preferences.
 
 <details>
 <summary><strong>See the application screenshots</strong></summary>

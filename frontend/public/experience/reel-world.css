@@ -8,18 +8,18 @@
   height: auto;
   background: #0a0e0c;
   isolation: isolate;
-  --reel-stage: 100svh;
+  /* A pinned stage must cover the viewport or its scroll spacer shows underneath. */
+  --reel-stage: 100dvh;
   color: #f0f0e4;
   min-width: 0;
 }
-.reel-world.reel-live:not(.reel-still) {
+.reel-world.reel-live {
   height: 310svh;
 }
 .reel-stage {
   position: sticky;
   top: 0;
   height: var(--reel-stage);
-  min-height: 620px;
   overflow: clip;
   isolation: isolate;
   background: #0a0e0c;
@@ -177,44 +177,24 @@
 .reel-skip:hover {
   background: #edf4ad;
 }
-.reel-pause {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  font-size: 0.75rem;
-  min-height: 44px;
-  padding: 0.6rem 1rem;
-  color: #dae3c8;
-  background: #10190bcc;
-  border: 1px solid #64724a;
-  border-radius: 30px;
-  cursor: pointer;
-}
-.reel-pause:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
 .reel-world a:focus-visible,
 .reel-world button:focus-visible {
   outline: 2px solid #dce77e;
   outline-offset: 5px;
 }
-.reel-world.reel-still,
 .reel-world.reel-fallback {
   height: auto !important;
 }
-.reel-still .reel-stage,
 .reel-fallback .reel-stage {
   position: relative;
 }
-.reel-still .reel-copy-first,
 .reel-fallback .reel-copy-first {
   opacity: 1;
   transform: none;
 }
-.reel-still .reel-copy-second,
 .reel-fallback .reel-copy-second {
   display: none;
 }
-.reel-still .reel-landscape,
 .reel-fallback .reel-landscape {
   transform: none;
 }
@@ -224,14 +204,13 @@ cinema-feature {
   margin-bottom: 2rem;
 }
 .app-reel {
-  --reel-stage: 86svh;
   border: 1px solid #3d4732;
   border-radius: 10px;
 }
 .app-reel .reel-stage {
   border-radius: 10px;
 }
-.app-reel.reel-live:not(.reel-still) {
+.app-reel.reel-live {
   height: 250svh;
 }
 .app-reel .reel-copy {
@@ -271,11 +250,8 @@ cinema-feature {
   }
 }
 @media (max-width: 700px) {
-  .reel-world.reel-live:not(.reel-still) {
+  .reel-world.reel-live {
     height: 260svh;
-  }
-  .reel-stage {
-    min-height: 640px;
   }
   .reel-copy {
     top: 15%;
@@ -330,13 +306,6 @@ cinema-feature {
     min-height: 46px;
     padding: 0.8rem 1rem;
   }
-  .reel-pause {
-    font-size: 0.68rem;
-    padding: 0.5rem 0.8rem;
-  }
-  .app-reel {
-    --reel-stage: 86svh;
-  }
   .app-reel .reel-copy {
     left: 1.3rem;
     top: 10%;
@@ -354,32 +323,8 @@ cinema-feature {
   .app-reel .reel-controls {
     inset: auto 1.1rem 1.2rem;
   }
-  .app-reel .reel-stage {
-    min-height: 600px;
-  }
-  .app-reel.reel-live:not(.reel-still) {
+  .app-reel.reel-live {
     height: 230svh;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .reel-world:not(.reel-user-play) {
-    height: auto !important;
-  }
-  .reel-world:not(.reel-user-play) .reel-stage {
-    position: relative;
-  }
-  .reel-world:not(.reel-user-play) .reel-copy-first {
-    opacity: 1;
-    transform: none;
-  }
-  .reel-world:not(.reel-user-play) .reel-copy-second {
-    display: none;
-  }
-  .reel-world:not(.reel-user-play) .reel-landscape {
-    transform: none;
-  }
-  .reel-surface {
-    transition: none;
   }
 }
 

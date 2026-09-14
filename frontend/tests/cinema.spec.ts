@@ -113,13 +113,19 @@ test('cinema entrance unfolds, stays readable, and opens real film destinations'
   expect(errors).toEqual([]);
 });
 
-test('motion preferences and compact layouts keep every film accessible', async ({
+test('reel stays animated with reduced motion and compact layouts keep films accessible', async ({
   page,
 }, info) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/experience/');
   await expect(page.locator('html')).toHaveClass(/static-motion/);
-  await expect(page.locator('.reel-world')).toHaveAttribute('data-motion', 'paused');
+  const scene = page.locator('.reel-world');
+  await expect(scene).toHaveAttribute('data-motion', 'running');
+  await expect(scene).toHaveAttribute('data-reel-ready', 'true');
+  const filmOffset = Number((await scene.getAttribute('data-sc-verify-state'))!.split(',')[2]);
+  await expect
+    .poll(async () => Number((await scene.getAttribute('data-sc-verify-state'))!.split(',')[2]))
+    .toBeGreaterThan(filmOffset);
   await expect(page.locator('.collection [data-sc-stage]')).toHaveCSS('position', 'static');
   for (const print of await page.locator('.print-art').all()) {
     await print.focus();
@@ -181,6 +187,37 @@ test('genre selection survives registration and opens the filtered live catalogu
     );
     await page.waitForTimeout(1500);
     await page.screenshot({ path: info.outputPath('discover-reel.png') });
+    await expect(page.getByRole('button', { name: /(?:Pause|Play) motion/ })).toHaveCount(0);
+    const reelTravel = await page.locator('cinema-feature .reel-world').evaluate((el) => ({
+      top: el.getBoundingClientRect().top + scrollY,
+      distance: el.clientHeight - el.querySelector('.reel-stage')!.clientHeight,
+    }));
+    for (const progress of [0.15, 0.5, 0.85]) {
+      await page.evaluate(
+        ({ top, distance, progress }) =>
+          scrollTo({ top: top + distance * progress, behavior: 'instant' }),
+        { ...reelTravel, progress },
+      );
+      await page.waitForTimeout(400);
+      const coverage = await page.locator('cinema-feature .reel-stage').evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, viewport: innerHeight };
+      });
+      await page.screenshot({ path: info.outputPath(`discover-scroll-${progress}.png`) });
+      expect(Math.abs(coverage.top)).toBeLessThanOrEqual(2);
+      expect(coverage.bottom).toBeGreaterThanOrEqual(coverage.viewport - 2);
+    }
+    // Changing the viewport must not reintroduce the empty strip under the pinned scene.
+    const originalViewport = page.viewportSize()!;
+    await page.setViewportSize({ width: originalViewport.width, height: 600 });
+    await expect
+      .poll(async () =>
+        page
+          .locator('cinema-feature .reel-stage')
+          .evaluate((el) => Math.abs(el.getBoundingClientRect().height - innerHeight)),
+      )
+      .toBeLessThanOrEqual(2);
+    await page.setViewportSize(originalViewport);
     await page.evaluate(() => {
       (window as any).__oldReel = document.querySelector('cinema-feature .reel-world');
     });
@@ -192,6 +229,17 @@ test('genre selection survives registration and opens the filtered live catalogu
     const frames = await page.evaluate(() => (window as any).__oldReel.dataset.reelFrames);
     await page.waitForTimeout(200);
     expect(await page.evaluate(() => (window as any).__oldReel.dataset.reelFrames)).toBe(frames);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.getByRole('button', { name: 'All films', exact: true }).click();
+    await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+    await expect(page.locator('cinema-feature .reel-world')).toHaveAttribute(
+      'data-motion',
+      'running',
+    );
+    await expect(page.locator('cinema-feature .reel-world')).toHaveAttribute(
+      'data-reel-ready',
+      'true',
+    );
   } finally {
     // Isolated test account; never modifies existing user accounts.
     if (registered) {
@@ -245,17 +293,22 @@ test('entrance remains readable with JavaScript disabled', async ({ browser }, i
   }
 });
 
-test('reel pause, resume, skip and graphics fallback preserve access', async ({ page }, info) => {
+test('reel keeps moving across preference changes and reloads, with skip and graphics fallback', async ({
+  page,
+}, info) => {
   await page.goto('/experience/');
   const scene = page.locator('.reel-world');
   await expect(scene).toHaveAttribute('data-reel-ready', 'true');
-  await page.getByRole('button', { name: 'Pause motion', exact: true }).click();
-  await expect(scene).toHaveAttribute('data-motion', 'paused');
-  await page.waitForTimeout(300);
-  const frames = await scene.getAttribute('data-reel-frames');
-  await page.waitForTimeout(250);
-  expect(await scene.getAttribute('data-reel-frames')).toBe(frames);
-  await page.getByRole('button', { name: 'Play motion', exact: true }).click();
+  await expect(page.getByRole('button', { name: /(?:Pause|Play) motion/ })).toHaveCount(0);
+  for (const reducedMotion of ['reduce', 'no-preference'] as const) {
+    await page.emulateMedia({ reducedMotion });
+    await expect(scene).toHaveAttribute('data-motion', 'running');
+    const frames = Number(await scene.getAttribute('data-reel-frames'));
+    await expect
+      .poll(async () => Number(await scene.getAttribute('data-reel-frames')))
+      .toBeGreaterThan(frames + 2);
+  }
+  await page.reload();
   await expect(scene).toHaveAttribute('data-motion', 'running');
   await page.getByRole('link', { name: 'Browse the collection', exact: false }).click();
   await expect(page.locator('#collection')).toBeFocused();

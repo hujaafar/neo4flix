@@ -9,13 +9,11 @@ const ease = (t) => {
 };
 const range = (p, a, b) => ease((p - a) / (b - a));
 
-/** A real, disposable 3D cinema scene. Shared by the entrance and Angular. */
+/** Shared 3D scene. Motion stays on while visible; skipping and graphics fallback remain available. */
 export function mountCinemaWorld(host, { target = '#collection' } = {}) {
   const stage = host.querySelector('.reel-stage');
   const surface = host.querySelector('.reel-surface');
-  const pauseButton = host.querySelector('[data-reel-pause]');
   const skipButton = host.querySelector('[data-reel-skip]');
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const fine = matchMedia('(hover: hover) and (pointer: fine)');
   let renderer, environment, pmrem, envTarget;
   let disposed = false,
@@ -27,8 +25,7 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
   let pointerX = 0,
     pointerY = 0,
     mouseX = 0,
-    mouseY = 0,
-    paused = reduced.matches;
+    mouseY = 0;
   let width = 1,
     height = 1,
     phone = false,
@@ -44,13 +41,7 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
   const material = (m) => (materials.add(m), m);
   const texture = (t) => (textures.add(t), t);
   const mode = () => {
-    host.classList.toggle('reel-still', paused || failed);
-    host.dataset.motion = failed ? 'fallback' : paused ? 'paused' : 'running';
-    if (pauseButton) {
-      pauseButton.disabled = failed;
-      pauseButton.textContent = paused ? 'Play motion' : 'Pause motion';
-      pauseButton.setAttribute('aria-pressed', String(paused));
-    }
+    host.dataset.motion = failed ? 'fallback' : 'running';
   };
   function fallBack() {
     failed = true;
@@ -330,7 +321,7 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
   function read() {
     if (disposed) return;
     const r = host.getBoundingClientRect();
-    targetProgress = paused ? 0 : clamp(-r.top / Math.max(1, r.height - height));
+    targetProgress = clamp(-r.top / Math.max(1, r.height - height));
     if (visible) wake();
   }
   function paint(now) {
@@ -338,24 +329,24 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
     if (disposed || failed || !visible || document.hidden) return;
     const dt = Math.min((now - (lastTime || now)) / 1000, 0.06);
     lastTime = now;
-    if (!paused) activeTime += dt;
-    progress = paused ? 0 : mix(progress, targetProgress, 1 - Math.exp(-dt * 10));
+    activeTime += dt;
+    progress = mix(progress, targetProgress, 1 - Math.exp(-dt * 10));
     if (Math.abs(progress - targetProgress) < 0.0001) progress = targetProgress;
-    mouseX = mix(mouseX, paused ? 0 : pointerX, 0.09);
-    mouseY = mix(mouseY, paused ? 0 : pointerY, 0.09);
+    mouseX = mix(mouseX, pointerX, 0.09);
+    mouseY = mix(mouseY, pointerY, 0.09);
     const p = progress,
       turn = range(p, 0.03, 0.5),
       centre = range(p, 0.25, 0.62),
       through = range(p, 0.58, 0.91);
-    const reveal = paused ? 1 : ease((now - born) / 1400);
+    const reveal = ease((now - born) / 1400);
     const openingX = phone ? 0 : 2.05;
     reel.position.set(mix(openingX, 0, centre), mix(phone ? -1.05 : 0.0, 0, centre), 0);
     reel.rotation.set(
       mix(0.18, 0, through) + mouseY * 0.1 * (1 - through),
       mix(-0.55, -Math.PI * 2, turn) + mouseX * 0.17 * (1 - through),
-      mix(-0.26, 0, through) + (paused ? 0 : Math.sin(activeTime * 0.24) * 0.025) * (1 - through),
+      mix(-0.26, 0, through) + Math.sin(activeTime * 0.24) * 0.025 * (1 - through),
     );
-    reel.rotation.z += (!paused ? (1 - reveal) * -0.5 : 0) * (1 - through);
+    reel.rotation.z += (1 - reveal) * -0.5 * (1 - through);
     reel.scale.setScalar(phone ? mix(0.86, 1, centre) : 1);
     camera.position.set(
       mouseX * 0.12 * (1 - through),
@@ -369,9 +360,9 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
       mix(-0.3, -2, through),
     );
     film.rotation.set(0, mix(-0.1, -0.4, turn), mix(-0.06, 0.2, turn));
-    filmTexture.offset.x = paused ? 0 : activeTime * 0.006 + p * 0.42;
+    filmTexture.offset.x = activeTime * 0.006 + p * 0.42;
     film.visible = p < 0.91;
-    dust.rotation.z = paused ? 0 : activeTime * 0.006;
+    dust.rotation.z = activeTime * 0.006;
     dust.position.z = through * 2;
     host.style.setProperty('--reel-p', p.toFixed(4));
     host.style.setProperty('--reel-enter', reveal.toFixed(4));
@@ -397,15 +388,15 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
       filmTexture.offset.x.toFixed(2),
       p.toFixed(3),
     ].join(',');
-    host.dataset.scVerifyHold = String(paused);
-    if (!paused) frame = requestAnimationFrame(paint);
+    host.dataset.scVerifyHold = 'false';
+    frame = requestAnimationFrame(paint);
   }
   function wake() {
     if (!frame && !disposed && !failed && visible && !document.hidden)
       frame = requestAnimationFrame(paint);
   }
   function pointer(event) {
-    if (!fine.matches || paused) return;
+    if (!fine.matches) return;
     const box = stage.getBoundingClientRect();
     pointerX = clamp((event.clientX - box.left) / box.width, 0, 1) * 2 - 1;
     pointerY = clamp((event.clientY - box.top) / box.height, 0, 1) * 2 - 1;
@@ -415,20 +406,6 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
     pointerX = 0;
     pointerY = 0;
     wake();
-  }
-  function toggle() {
-    paused = !paused;
-    host.classList.toggle('reel-user-play', !paused);
-    progress = 0;
-    mode();
-    measure();
-  }
-  function motionChange() {
-    paused = reduced.matches;
-    host.classList.remove('reel-user-play');
-    progress = 0;
-    mode();
-    measure();
   }
   function skip(event) {
     const destination = document.querySelector(target);
@@ -470,11 +447,8 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
   stage.addEventListener('pointermove', pointer, { passive: true });
   stage.addEventListener('pointerleave', leave);
   document.addEventListener('visibilitychange', visibility);
-  reduced.addEventListener('change', motionChange);
   renderer.domElement.addEventListener('webglcontextlost', contextLost);
-  pauseButton?.addEventListener('click', toggle);
   skipButton?.addEventListener('click', skip);
-  if (pauseButton) pauseButton.disabled = false;
   mode();
   measure();
   return {
@@ -488,8 +462,6 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
       stage.removeEventListener('pointermove', pointer);
       stage.removeEventListener('pointerleave', leave);
       document.removeEventListener('visibilitychange', visibility);
-      reduced.removeEventListener('change', motionChange);
-      pauseButton?.removeEventListener('click', toggle);
       skipButton?.removeEventListener('click', skip);
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       for (const img of images) img.onload = null;

@@ -48,9 +48,6 @@ import { Movie } from './api';
             Browse films
             <span aria-hidden="true">↗</span>
           </a>
-          <button class="reel-pause" type="button" data-reel-pause disabled aria-pressed="false">
-            Pause motion
-          </button>
         </div>
       </div>
     </section>

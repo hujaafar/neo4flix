@@ -1,5 +1,18 @@
 # Validation report
 
+## Continuous reel motion and scroll gap fix — 14 September 2026
+
+The shared 3D reel now stays animated while visible on the public entrance and signed-in Discover page, including with reduced-motion preferences enabled. Manual pause controls were removed at the owner's request. Keyboard skip links, offscreen/background suspension, renderer cleanup and graphics fallback remain; other page transitions still respect reduced motion.
+
+Discover previously pinned an `86svh` stage, exposing an empty strip below it. A regression check against the previous deployment reproduced this at 860px in a 1000px viewport. Both reels now use `100dvh`, with no minimum-height override that can exceed a short viewport.
+
+- Angular production build and formatting checks passed.
+- All **14 desktop/mobile browser scenarios passed in 78.50 seconds**, with no failures, skips or flaky results and normal HTTPS certificate validation.
+- New checks cover full viewport coverage at three signed-in scroll positions, viewport resizing, actual moving film texture under reduced motion, live preference changes, reloads and Angular remounts. Existing keyboard skip, graphics fallback, no-JavaScript and account journeys also passed.
+- Desktop and mobile scroll screenshots were inspected. The blank strip no longer appears while the reel is pinned.
+
+The Docker compilation attempt exhausted available memory alongside the running services and was cancelled. The Windows-built production bundle was then packaged into the same nginx runtime and deployed successfully, replacing only the frontend container. HTTPS returned 200 afterward. Database volumes were preserved. Backend unit/API/stress checks below describe the earlier rebuild and were not rerun for this frontend-only change. Mobile checks use browser emulation, not a physical phone.
+
 ## Fresh Docker rebuild and live recheck — 14 September 2026
 
 Docker Desktop 4.90.0 was reinstalled and its Linux engine 29.7.2 started successfully. This was a clean rebuild from source and the 18-film seed catalogue; previous Docker volume contents were not restored. The existing local project secrets were retained.

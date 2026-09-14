@@ -991,11 +991,11 @@ html:not(.motion-ready) .entrance-copy {
   background: transparent;
   border-color: #a9bc9928;
 }
-.reel-world.reel-live:not(.reel-still) {
+.reel-world.reel-live {
   height: 310svh !important;
 }
 @media (max-width: 700px) {
-  .reel-world.reel-live:not(.reel-still) {
+  .reel-world.reel-live {
     height: 260svh !important;
   }
 }

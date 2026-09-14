@@ -16,5 +16,5 @@ https://localhost {
     reverse_proxy frontend:80
 }
 http://localhost {
-    redir https://localhost:8443{uri} permanent
+    redir https://localhost:{$HTTPS_PORT:8443}{uri} permanent
 }

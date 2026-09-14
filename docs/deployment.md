@@ -28,6 +28,20 @@ The production Caddyfile uses automated public ACME certificates and renewal; it
 
 ## Data and credentials
 
+### Local startup and inspected build connections
+
+On Windows, `./scripts/start.ps1 -TrustLocalCertificate` preserves existing secrets and volumes, builds the stack, waits for readiness, exports Caddy's local CA and trusts that CA for the current Windows account. It then checks `/login` with normal HTTPS verification. Restart an already-open browser if it cached the old certificate error. This helper is for the default localhost deployment; use the production Compose override above for a public hostname.
+
+Some antivirus or corporate proxies inspect HTTPS. If Maven reports `PKIX path building failed` or npm rejects that proxy's certificate during the Docker build, export the organization's **already trusted public root certificate** as PEM. Do not export private keys or disable TLS verification. Supply the PEM with:
+
+```powershell
+.\scripts\start.ps1 -TrustLocalCertificate -BuildCaFile C:\path\to\trusted-build-ca.pem
+```
+
+Alternatively, place it in the ignored `secrets/build-ca.pem`; the helper detects that file. The optional `compose.build-ca.yaml` sends it as a BuildKit secret. Only the Maven build-stage trust store and npm build invocation use it; it is not copied into the runtime images. Ordinary builds without an inspecting proxy need no override. From another shell, set `BUILD_CA_FILE` and include `-f compose.yaml -f compose.build-ca.yaml` in the build command.
+
+### Persistence
+
 - Back up Neo4j with a supported dump/restore workflow and test restoration. Do not copy an actively written database directory as a substitute for a consistent backup.
 - Back up the encryption key alongside the graph through a separately secured channel. Lost encryption keys cannot decrypt saved TOTP secrets.
 - Protect the signing key, `.env`, Docker socket, and host access. Use an appropriate secret manager for a shared operating environment.

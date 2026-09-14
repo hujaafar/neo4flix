@@ -7,7 +7,10 @@ COPY movie-service movie-service
 COPY user-service user-service
 COPY rating-service rating-service
 COPY recommendation-service recommendation-service
-RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp verify
+RUN --mount=type=cache,id=neo4flix-maven,target=/root/.m2,sharing=locked --mount=type=secret,id=build_ca \
+    if [ -s /run/secrets/build_ca ]; then \
+      keytool -importcert -noprompt -cacerts -storepass changeit -alias local-build-ca -file /run/secrets/build_ca; \
+    fi && mvn -B -ntp verify
 
 FROM eclipse-temurin:21-jre
 RUN groupadd --system neo4flix && useradd --system --gid neo4flix --home-dir /app neo4flix

@@ -3,17 +3,17 @@ package io.neo4flix.common;
 import java.util.Map;
 import org.neo4j.driver.exceptions.ClientException;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.method.annotation.HandlerMethodValidationException;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
-public class ApiErrors {
+public class ApiErrors extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     ResponseEntity<?> api(ApiException e) {
@@ -21,24 +21,37 @@ public class ApiErrors {
     }
 
     @ExceptionHandler({
-        MethodArgumentNotValidException.class,
-        HandlerMethodValidationException.class,
-        HttpMessageNotReadableException.class,
-        MethodArgumentTypeMismatchException.class,
         jakarta.validation.ConstraintViolationException.class,
         IllegalArgumentException.class,
     })
     ResponseEntity<?> invalid(Exception e) {
-        if (e instanceof MethodArgumentNotValidException v) {
-            var first = v.getBindingResult().getFieldErrors().stream().findFirst();
-            return error(
-                400,
-                first
-                    .map(f -> f.getField() + ": " + f.getDefaultMessage())
-                    .orElse("Invalid request")
-            );
-        }
         return error(400, "Invalid request values");
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(
+        Exception exception,
+        Object body,
+        HttpHeaders headers,
+        HttpStatusCode status,
+        WebRequest request
+    ) {
+        // Preserve Spring's status and protocol headers (Allow, Accept, etc.), without exposing input or internals.
+        String message = switch (status.value()) {
+            case 404 -> "Resource not found";
+            case 405 -> "HTTP method is not supported for this resource";
+            case 406 -> "Requested response format is not supported";
+            case 413 -> "Request is too large";
+            case 415 -> "Request content type is not supported";
+            default -> status.is4xxClientError()
+                ? "Invalid request values"
+                : "Something went wrong. Please try again.";
+        };
+        return new ResponseEntity<>(
+            Map.of("status", status.value(), "message", message),
+            headers,
+            status
+        );
     }
 
     @ExceptionHandler(AccessDeniedException.class)

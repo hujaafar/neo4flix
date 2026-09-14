@@ -1,0 +1,17 @@
+# Optional: only for machines whose HTTPS traffic is inspected by a trusted local proxy.
+# Example: $env:BUILD_CA_FILE='C:/path/to/exported-proxy-ca.pem'
+# docker compose -f compose.yaml -f compose.build-ca.yaml build
+services:
+  movie-service:
+    build: { secrets: [build_ca] }
+  user-service:
+    build: { secrets: [build_ca] }
+  rating-service:
+    build: { secrets: [build_ca] }
+  recommendation-service:
+    build: { secrets: [build_ca] }
+  frontend:
+    build: { secrets: [build_ca] }
+secrets:
+  build_ca:
+    file: ${BUILD_CA_FILE:?Set the path to your already trusted HTTPS inspection CA}

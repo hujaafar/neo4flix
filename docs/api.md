@@ -4,6 +4,8 @@ All paths use the same HTTPS origin. Unless marked anonymous, supply `Authorizat
 
 Validation failures return 400; authentication failures 401; denied actions 403; missing records 404; uniqueness conflicts 409; throttling 429; unavailable REST dependencies 503. Application errors use `{ "status": 400, "message": "..." }`. Spring Security and gateway errors can have empty/non-JSON bodies, which the frontend handles. Empty writes return 204 where noted.
 
+Unsupported methods return 405 with an `Allow` header; unsupported request media types return 415; unacceptable response types return 406. Malformed JSON and invalid parameter types remain 400. Unexpected server failures return a generic 500 without internal details.
+
 ## Authentication — user service
 
 Every auth POST requires an `Origin` header exactly matching `APP_ORIGIN`. These endpoints are anonymous and must not receive an expired or malformed bearer token. JSON content types, strict Origin validation, a Secure HttpOnly SameSite=Strict cookie, and no permissive CORS protect cookie-authenticated refresh/logout from CSRF.
@@ -41,6 +43,7 @@ Password policy: at least 12 characters, uppercase, lowercase, number, symbol, a
 |---|---|---|
 | GET | `/api/movies` | Array of movie objects; query parameters below |
 | GET | `/api/movies/genres` | Sorted unique genre strings |
+| GET | `/api/movies/graph` | **ADMIN** → bounded live `{nodes,relationships,movieLimit,userLimit,gdsVersion}` snapshot; no emails, credentials or private rating notes |
 | GET | `/api/movies/{id}` | One movie, computed `averageRating` and `ratingCount` |
 | GET | `/api/movies/{id}/related` | Up to six movies sharing genre nodes |
 | GET | `/api/movies/recommendations` | Delegates to recommendation service over REST |

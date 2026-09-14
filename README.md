@@ -36,6 +36,7 @@ It is a movie recommendation application; movie playback is outside its scope. T
 | **Share a recommendation** | Create a link with a note, then copy it for a friend; update or revoke your links. Recipients sign in to view them. |
 | **Manage your account** | Edit your profile, change your password, enable authenticator-app 2FA, or delete your account. |
 | **Administer the catalogue** | Administrators can add, edit, and remove films. |
+| **Inspect the graph** | Administrators can explore live Movie, Genre and User nodes with rating values and timestamps. |
 
 The public entrance and signed-in Discover page share a real 3D reel, a moving film strip, and a camera transition through the reel's centre. Mobile has its own composition. Pause controls, reduced-motion preferences, keyboard access, and a static fallback keep the catalogue accessible.
 
@@ -65,10 +66,10 @@ Open Docker Desktop, then run:
 ```powershell
 git clone https://github.com/hujaafar/neo4flix.git
 cd neo4flix
-.\scripts\setup.ps1
-docker compose up --build -d
-docker compose ps
+.\scripts\start.ps1 -TrustLocalCertificate
 ```
+
+The Windows helper generates secrets, builds the services, waits for health checks, and verifies HTTPS. `-TrustLocalCertificate` imports the running gateway's development CA into your Windows account; omit the switch if you prefer to manage local trust yourself.
 
 ### macOS / Linux
 
@@ -112,6 +113,8 @@ Restart the browser. On macOS/Linux, import that exported CA into the appropriat
 5. Enable an authenticator under **Account & security** if you want 2FA.
 
 The default administrator email is `admin@neo4flix.local`. Its generated password is the `ADMIN_PASSWORD` value in your private `.env`. Registration always creates a normal user; it cannot grant administrator access.
+
+If another project uses port 8443, set `HTTPS_PORT=9443`, `HTTP_PORT=9080` and `APP_ORIGIN=https://localhost:9443` together in `.env`, then rerun the startup helper. Open the URL printed by the helper. For browser tests, also set `NEO4FLIX_TEST_URL` to that URL.
 
 ### Starting again later
 
@@ -180,12 +183,12 @@ flowchart LR
 
 Recommendations combine three signals:
 
-1. **Shared taste:** find viewers who also gave at least 4 stars to films you liked, then consider other films they liked.
+1. **Shared taste:** find viewers who also gave at least 4 stars to films you liked. Neo4j GDS `gds.similarity.jaccard` compares the two sets of liked films; closer peers contribute more to candidates they liked.
 2. **Genre affinity:** follow the genres of your liked films to new candidates.
 3. **Audience prior:** blend actual ratings with a modest prior so new users and unrated films still get useful starting results.
 
 ```text
-ranking score = 3 × distinct similar viewers
+ranking score = 3 × sum of contributing peers' Jaccard similarities
               + 1.5 × distinct liked genres
               + (sum of candidate ratings + 15) / (rating count + 5)
 ```
@@ -193,6 +196,8 @@ ranking score = 3 × distinct similar viewers
 Already-rated and hidden films are excluded. Genre/date filters apply before ranking; movie title breaks score ties. The score is a ranking signal, not a predicted rating or a match percentage. New accounts start from the audience prior without fabricated personal activity.
 
 See the [graph design](docs/architecture.md) and [recommendation implementation](recommendation-service/src/main/java/io/neo4flix/recommendation/RecommendationController.java).
+
+The database image includes **GDS 2.13.4**, pinned by SHA-256 for Neo4j 5.26. **Neo4j-OGM 5.0.8** maps Movie, User and Genre nodes and RATED relationship entities. Movie metadata/genre writes and rating CRUD use real OGM sessions; explicit Cypher remains useful for security transactions and aggregate queries. Administrators can open **Database graph** to inspect bounded live graph data, including rating values and timestamps, without exposing credentials or private notes.
 
 ## Security
 
@@ -208,7 +213,7 @@ Security changes and logout revoke existing account sessions. Private rating not
 
 ## Testing
 
-The recorded local validation includes **6 security unit tests**, **52 API assertions**, and **12 desktop/mobile browser scenarios**. These are development results from **9 September 2026**, not a live CI badge. The [validation report](docs/validation.md) records individual runs, fixes, reruns, and limitations.
+The audit-fix build passed **14 unit tests**, **58 live HTTPS API assertions**, and **700 bounded stress requests** on **14 September 2026**. The earlier 12 browser scenarios passed on 9 September; the expanded 14-scenario browser rerun is pending recovery of the shared Docker host. These are recorded development results, not a live CI badge. The [validation report](docs/validation.md) records individual runs, fixes, reruns, and limitations.
 
 ### Backend
 
@@ -228,6 +233,14 @@ docker compose run --rm test-api
 
 This suite creates and removes test accounts in a development database. It exercises authentication, authorization, ratings, recommendations, watchlists, sharing, refresh replay, and 2FA. The report is written to `test-results/api-results.json`.
 
+### Bounded stress test
+
+```bash
+docker compose run --rm test-stress
+```
+
+The development-only harness sends 700 mixed requests at 4, 8 and 16 concurrent workers. One quarter update a single account's rating, exercising lock contention. It checks response contents, latency, rating uniqueness and account cleanup, and stops escalation if a stage fails. Results go to `test-results/stress-results.json`; this small-catalogue run is not a production capacity benchmark.
+
 ### Browser
 
 With Node 22.12+ in Angular 21's supported range:
@@ -241,6 +254,8 @@ npm run test:e2e
 
 Playwright covers desktop/mobile account journeys, actual movie actions, motion, keyboard access, reduced motion, WebGL fallback, and renderer cleanup. Artifacts are saved under `frontend/test-results/`. The isolated test browser accepts the local development certificate; application TLS verification remains enabled.
 
+If Chrome is already installed, set `NEO4FLIX_BROWSER_CHANNEL=chrome` instead of downloading Playwright's browser. In PowerShell: `$env:NEO4FLIX_BROWSER_CHANNEL='chrome'`. The administrator graph scenario uses the local `.env` bootstrap credentials and disables traces. Run this suite on the generated development stack, with 2FA disabled for that test administrator.
+
 ## Development
 
 From `frontend/`:
@@ -252,7 +267,7 @@ npm run format
 npm run format:check
 ```
 
-Prettier formats the editable TypeScript, Angular templates, JavaScript, CSS, Java, XML, and YAML. The optional Python test formatter is installed with `python -m pip install -r requirements-dev.txt`; run `python -m ruff format tests/integration.py` from the repository root.
+Prettier formats the editable TypeScript, Angular templates, JavaScript, CSS, Java, XML, and YAML. `.gitattributes` keeps source files at LF on Windows checkouts. The optional Python test formatter is installed with `python -m pip install -r requirements-dev.txt`; run `python -m ruff format tests` from the repository root.
 
 The shared 3D source is [`frontend/src/cinema/reel-world.js`](frontend/src/cinema/reel-world.js). Build/start hooks generate its browser bundle automatically. The Angular wrapper disposes the scene's listeners, observers, frame loop, and GPU resources when leaving the feature. Edit the source rather than the generated bundle.
 
@@ -297,6 +312,7 @@ neo4flix/
 | [API reference](docs/api.md) | Endpoints, request bodies, responses, and access rules. |
 | [Cinema integration](docs/scroll-craft.md) | Scroll-craft, Three.js lifecycle, accessibility, and asset handling. |
 | [Validation](docs/validation.md) | Test coverage, recorded results, and practical limits. |
+| [Evaluation walkthrough](docs/evaluation.md) | Demonstration steps, graph/algorithm explanation and human evaluation questions. |
 
 A public deployment needs your own host, domain, DNS, and secrets. Caddy's production configuration obtains public certificates. Email verification, password-reset delivery, 2FA recovery, high availability, and large-catalogue query optimization remain future work.
 

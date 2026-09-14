@@ -23,11 +23,43 @@ x-api: &api
   volumes:
     - ./secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
 services:
+  test-stress:
+    image: python:3.13-alpine
+    profiles: [test]
+    working_dir: /app
+    command:
+      [
+        python,
+        tests/stress.py,
+        --base,
+        '${APP_ORIGIN:-https://localhost:8443}',
+        --ca,
+        secrets/local-ca.crt,
+        --connect,
+        gateway:443,
+        --out,
+        test-results/stress-results.json,
+      ]
+    networks: [edge]
+    volumes:
+      - ./tests:/app/tests:ro
+      - ./secrets/local-ca.crt:/app/secrets/local-ca.crt:ro
+      - ./test-results:/app/test-results
   test-api:
     image: python:3.13-alpine
     profiles: [test]
     working_dir: /app
-    command: [python, tests/integration.py, --ca, secrets/local-ca.crt, --connect, gateway:443]
+    command:
+      [
+        python,
+        tests/integration.py,
+        --base,
+        '${APP_ORIGIN:-https://localhost:8443}',
+        --ca,
+        secrets/local-ca.crt,
+        --connect,
+        gateway:443,
+      ]
     networks: [edge]
     volumes:
       - ./tests:/app/tests:ro
@@ -35,7 +67,7 @@ services:
       - ./secrets/local-ca.crt:/app/secrets/local-ca.crt:ro
       - ./test-results:/app/test-results
   neo4j:
-    image: neo4j:5.26-community
+    build: ./infra/neo4j
     restart: unless-stopped
     mem_limit: 1800m
     environment:
@@ -44,10 +76,16 @@ services:
       NEO4J_server_memory_heap_max__size: 768m
       NEO4J_server_memory_pagecache_size: 256m
       NEO4J_server_http_enabled: 'false'
+      NEO4J_dbms_security_procedures_allowlist: gds.*
+      NEO4J_dbms_security_procedures_unrestricted: gds.*
     volumes: [graph-data:/data, graph-logs:/logs]
     networks: [backend]
     healthcheck:
-      test: [CMD-SHELL, 'cypher-shell -u neo4j -p "$${NEO4J_AUTH#*/}" "RETURN 1" > /dev/null 2>&1']
+      test:
+        [
+          CMD-SHELL,
+          'cypher-shell -u neo4j -p "$${NEO4J_AUTH#*/}" "RETURN gds.version(), gds.similarity.jaccard([1,2],[2,3])" > /dev/null 2>&1',
+        ]
       interval: 15s
       timeout: 10s
       retries: 15
@@ -84,7 +122,9 @@ services:
   gateway:
     image: caddy:2.10-alpine
     restart: unless-stopped
-    ports: ['127.0.0.1:8443:443', '127.0.0.1:8080:80']
+    ports: ['127.0.0.1:${HTTPS_PORT:-8443}:443', '127.0.0.1:${HTTP_PORT:-8080}:80']
+    environment:
+      HTTPS_PORT: ${HTTPS_PORT:-8443}
     volumes: [./infra/Caddyfile:/etc/caddy/Caddyfile:ro, caddy-data:/data, caddy-config:/config]
     networks: [edge]
     depends_on: [frontend]

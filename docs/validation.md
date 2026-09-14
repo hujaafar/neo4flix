@@ -1,5 +1,35 @@
 # Validation report
 
+## Audit fixes — 14 September 2026
+
+The corrected source adds actual Neo4j-OGM persistence, the GDS Jaccard recommendation signal, an administrator graph view, framework HTTP error handling, LF checkout rules, a Windows startup/trust helper and a repeatable stress harness. The earlier pinned revision `17d232d` does not contain these changes.
+
+Verified against a separate Compose project and fresh graph at `https://localhost:8943`:
+
+- **14 unit tests passed** in the Docker Maven build: six security primitive tests, five MVC error tests, OGM bootstrap and two transaction retry/cleanup tests.
+- **58 API assertions passed** in 14.86 seconds through Caddy with certificate and hostname validation enabled. This includes mapped movie/genre readback, removed genre edges, rating CRUD/concurrency, GDS similarity of exactly 1/3, graph access/privacy, all previous account flows and real TOTP checks.
+- **700/700 stress responses passed** with HTTP 200 and valid content. The harness confirmed one rating relationship after concurrent updates and deleted its disposable account.
+- Angular production build, Prettier and Ruff format checks passed.
+- A fresh index checkout with Windows `core.autocrlf=true` passed the ordinary formatting command; `.gitattributes` fixes the earlier 64-file line-ending failure.
+
+**Remaining host verification:** the 14 desktop/mobile browser scenarios attempted the isolated HTTPS origin but failed at navigation with connection resets, before testing application behavior. The local main-stack rebuild then reached healthy database/API services but could not bind port 8443 because the concurrently running Travel Plan task used that port. The Docker engine subsequently stopped responding. These browser runs are failures, not passes. Neo4flix now supports configurable ports; this laptop's ignored `.env` selects HTTPS 9443, HTTP 9080 and a matching `APP_ORIGIN`. Fresh browser and Windows certificate verification at that address still require a responsive Docker engine and coordinated testing with the other active task.
+
+The graph page additionally passed two isolated Chrome checks at 1440px and 390px: keyboard selection, rating/table display, no outer overflow and recovery from a 503 followed by refresh. These used the production Angular bundle with explicitly mocked auth/graph responses on a local static server, and were visually inspected. They do not replace the pending live Docker browser suite. The Windows startup helper and optional build CA configure successfully, but a complete successful run of that helper and live browser graph inspection are not yet claimed. No publicly trusted ACME certificate or real-user recommendation relevance benchmark was evaluated.
+
+| Concurrent workers | Requests | p50 | p95 | Maximum | Failed responses/content checks |
+| --- | --- | --- | --- | --- | --- |
+| 4 | 100 | 75.4 ms | 95.3 ms | 154.3 ms | 0 |
+| 8 | 200 | 74.0 ms | 89.2 ms | 109.8 ms | 0 |
+| 16 | 400 | 77.1 ms | 104.1 ms | 127.6 ms | 0 |
+
+The load mixes catalogue, recommendations, movie details and rating upserts equally, using one account and the 18-film starter catalogue. It is a short contention test, not an endurance test, large-data benchmark or proof of production capacity.
+
+The live tests caught and drove fixes for a GDS folder permission problem, an incomplete Maven cache from the full disk, OGM deadlock retries and stale genre edges caused by loading an OGM snapshot before a write query cleared it. The API harness also now avoids racing a TOTP period boundary. Earlier failed runs are not counted as passes.
+
+The results below are historical and retain their original scope. For evaluation steps and questions that require people, see [the walkthrough](evaluation.md).
+
+## Original validation — 9 September 2026
+
 Validated locally on **9 September 2026** against the Docker deployment at `https://localhost:8443`.
 
 | Check | Result |

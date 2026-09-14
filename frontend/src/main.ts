@@ -69,6 +69,11 @@ const routes: Routes = [
     canActivate: [signedIn, admin],
     loadComponent: () => import('./pages/admin').then((m) => m.AdminPage),
   },
+  {
+    path: 'graph',
+    canActivate: [signedIn, admin],
+    loadComponent: () => import('./pages/graph').then((m) => m.GraphPage),
+  },
   { path: '**', redirectTo: '' },
 ];
 bootstrapApplication(App, {

@@ -144,6 +144,8 @@ try:
         origin="https://evil.example",
     )
     check(True, "Cross-origin registration is denied")
+    public.request("/api/auth/login", "PUT", expected=405)
+    check(True, "Unsupported auth method returns 405 instead of a server error")
     alice = Client()
     users.append(alice)
     account, headers = alice.register("alice")
@@ -249,6 +251,13 @@ try:
         "Collaborative graph traversal uses overlapping likes",
     )
     check(
+        interstellar["algorithm"] == "gds.similarity.jaccard"
+        and abs(interstellar["collaborativeScore"] - 1 / 3) < 1e-9,
+        "Real GDS Jaccard similarity weights the overlapping-like fixture correctly",
+    )
+    alice.request("/api/movies/graph", expected=403)
+    check(True, "Database graph inspection requires an administrator")
+    check(
         all(
             recs[i]["recommendationScore"] >= recs[i + 1]["recommendationScore"]
             for i in range(len(recs) - 1)
@@ -350,6 +359,10 @@ try:
         "/api/users/me/2fa/setup", "POST", {"password": alice.password, "code": ""}
     )
     secret = setup["secret"]
+    # Leave time for the previous/current/next-step sequence instead of racing a 30-second boundary.
+    phase = time.time() % 30
+    if phase > 20:
+        time.sleep(30 - phase + 0.2)
     step = int(time.time()) // 30
     alice.request(
         "/api/users/me/2fa/confirm",
@@ -394,10 +407,26 @@ try:
         admin.login()
         created, _ = admin.request("/api/movies", "POST", movie_input, 201)
         created_movie = created["id"]
-        updated = {**movie_input, "title": "Updated Integration Film"}
+        updated = {**movie_input, "title": "Updated Integration Film", "genres": ["Animation"]}
         admin.request("/api/movies/" + created_movie, "PUT", updated)
         film, _ = alice.request("/api/movies/" + created_movie)
         check(film["title"] == updated["title"], "Administrator can create and update movies")
+        check(film["genres"] == ["Animation"], "OGM reloads updated movie properties")
+        snapshot, _ = admin.request("/api/movies/graph")
+        links = [r for r in snapshot["relationships"] if r["source"] == "movie:" + created_movie]
+        check(
+            snapshot["gdsVersion"].startswith("2.13.")
+            and any(r["target"] == "genre:Animation" for r in links)
+            and not any(r["target"] == "genre:Drama" for r in links),
+            "Live graph confirms GDS and OGM replaces old genre relationships",
+        )
+        check(
+            not any(
+                secret in json.dumps(snapshot)
+                for secret in ["passwordHash", "totpSecret", "email", "review"]
+            ),
+            "Administrative graph projects no credentials, emails or private rating notes",
+        )
         admin.request("/api/movies/" + created_movie, "DELETE", expected=204)
         alice.request("/api/movies/" + created_movie, expected=404)
         created_movie = ""

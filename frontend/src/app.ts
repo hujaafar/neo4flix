@@ -46,6 +46,10 @@ import { Api } from './api';
               <span aria-hidden="true">＋</span>
               Manage films
             </a>
+            <a routerLink="/graph" routerLinkActive="active">
+              <span aria-hidden="true">◇</span>
+              Database graph
+            </a>
           }
         </nav>
         <div class="sidebar-bottom">

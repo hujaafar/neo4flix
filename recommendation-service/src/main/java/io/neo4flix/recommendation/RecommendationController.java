@@ -40,14 +40,31 @@ public class RecommendationController {
         return graph
             .list(
                 """
-                MATCH (u:User {id:$user}), (m:Movie)
+                MATCH (u:User {id:$user})
+                CALL { WITH u
+                  OPTIONAL MATCH (u)-[liked:RATED]->(seen:Movie) WHERE liked.score>=4
+                  RETURN collect(DISTINCT id(seen)) AS likedIds
+                }
+                CALL { WITH u,likedIds
+                  OPTIONAL MATCH (u)-[a:RATED]->(:Movie)<-[b:RATED]-(peer:User)
+                  WHERE peer<>u AND a.score>=4 AND b.score>=4
+                  WITH DISTINCT peer,likedIds
+                  OPTIONAL MATCH (peer)-[r:RATED]->(seen:Movie) WHERE r.score>=4
+                  WITH peer,likedIds,collect(DISTINCT id(seen)) AS peerLikedIds
+                  WITH peer,CASE WHEN peer IS NULL THEN 0.0
+                    ELSE gds.similarity.jaccard(likedIds,peerLikedIds) END AS similarity
+                  RETURN collect(CASE WHEN peer IS NULL THEN null
+                    ELSE {user:peer,similarity:similarity} END) AS peers
+                }
+                MATCH (m:Movie)
                 WHERE NOT (u)-[:RATED]->(m) AND NOT (u)-[:DISMISSED]->(m)
                   AND ($genre='' OR $genre IN m.genres)
                   AND ($from IS NULL OR m.releaseDate >= $from) AND ($to IS NULL OR m.releaseDate <= $to)
-                CALL { WITH u,m
-                  OPTIONAL MATCH (u)-[a:RATED]->(seen:Movie)<-[b:RATED]-(peer:User)-[c:RATED]->(m)
-                  WHERE peer<>u AND a.score>=4 AND b.score>=4 AND c.score>=4
-                  RETURN count(DISTINCT peer) AS neighbors
+                CALL { WITH peers,m
+                  UNWIND peers AS neighbor
+                  WITH neighbor.user AS peer,neighbor.similarity AS similarity,m
+                  MATCH (peer)-[c:RATED]->(m) WHERE c.score>=4
+                  RETURN coalesce(sum(similarity),0.0) AS collaborative,count(peer) AS neighbors
                 }
                 CALL { WITH u,m
                   OPTIONAL MATCH (u)-[liked:RATED]->(:Movie)-[:IN_GENRE]->(g:Genre)<-[:IN_GENRE]-(m)
@@ -56,10 +73,11 @@ public class RecommendationController {
                 CALL { WITH m OPTIONAL MATCH (:User)-[r:RATED]->(m)
                   RETURN coalesce(avg(r.score),0.0) AS averageRating,count(r) AS ratingCount
                 }
-                WITH m,neighbors,affinity,averageRating,ratingCount,
-                  (neighbors*3.0 + affinity*1.5 + (averageRating*ratingCount + 3.0*5)/(ratingCount+5.0)) AS score
+                WITH m,neighbors,collaborative,affinity,averageRating,ratingCount,
+                  (collaborative*3.0 + affinity*1.5 + (averageRating*ratingCount + 3.0*5)/(ratingCount+5.0)) AS score
                 RETURN m{.*,averageRating:averageRating,ratingCount:ratingCount,
-                  recommendationScore:score,reason:CASE WHEN neighbors>0 THEN 'Loved by viewers with similar taste'
+                  recommendationScore:score,collaborativeScore:collaborative,
+                  algorithm:'gds.similarity.jaccard',reason:CASE WHEN neighbors>0 THEN 'Loved by viewers with similar taste'
                   WHEN affinity>0 THEN 'More from genres you enjoy' ELSE 'Explore something new' END} AS movie
                 ORDER BY score DESC, m.title LIMIT $limit
                 """,

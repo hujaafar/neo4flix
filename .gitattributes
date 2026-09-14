@@ -1,0 +1,10 @@
+# Keep source checkouts consistent with Prettier and shell scripts on every OS.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.gif binary
+*.mp4 binary
+*.woff2 binary
+*.zip binary

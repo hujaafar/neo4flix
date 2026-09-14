@@ -232,7 +232,9 @@ test('entrance remains readable with JavaScript disabled', async ({ browser }, i
   });
   try {
     const page = await context.newPage();
-    await page.goto('https://localhost:8443/experience/');
+    await page.goto(
+      (process.env['NEO4FLIX_TEST_URL'] || 'https://localhost:8443') + '/experience/',
+    );
     await expect(page.getByRole('heading', { name: 'Every film. A new world.' })).toBeVisible();
     await expect(page.locator('.collection [data-sc-stage]')).toHaveCSS('position', 'static');
     await page.getByRole('link', { name: 'Create your account' }).scrollIntoViewIfNeeded();

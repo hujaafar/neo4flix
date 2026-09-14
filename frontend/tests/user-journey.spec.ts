@@ -7,7 +7,7 @@ let cleanupAccount: { email: string; password: string } | null = null;
 test.afterEach(async ({ request }) => {
   if (!cleanupAccount) return;
   const login = await request.post('/api/auth/login', {
-    headers: { Origin: 'https://localhost:8443' },
+    headers: { Origin: process.env['NEO4FLIX_TEST_URL'] || 'https://localhost:8443' },
     data: { ...cleanupAccount, code: '' },
   });
   if (login.ok()) {

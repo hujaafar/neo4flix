@@ -17,6 +17,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class MovieController {
 
     private final Graph graph;
+    private final MovieStore store;
     private final ServiceClient services;
     private final String recommendations;
     public static final String PROJECTION =
@@ -24,10 +25,12 @@ public class MovieController {
 
     public MovieController(
         Graph graph,
+        MovieStore store,
         ServiceClient services,
         @Value("${app.recommendation-url}") String recommendations
     ) {
         this.graph = graph;
+        this.store = store;
         this.services = services;
         this.recommendations = recommendations;
     }
@@ -96,13 +99,14 @@ public class MovieController {
 
     @GetMapping("/{id}")
     public Object detail(@PathVariable String id) {
-        return graph
-            .one(
-                "MATCH (m:Movie {id:$id}) OPTIONAL MATCH (:User)-[r:RATED]->(m) WITH m,coalesce(avg(r.score),0.0) AS averageRating,count(r) AS ratingCount RETURN " +
-                    PROJECTION,
+        var movie = store.find(id).view();
+        movie.putAll(
+            graph.one(
+                "MATCH (m:Movie {id:$id}) OPTIONAL MATCH (:User)-[r:RATED]->(m) RETURN coalesce(avg(r.score),0.0) AS averageRating,count(r) AS ratingCount",
                 Map.of("id", id)
             )
-            .get("movie");
+        );
+        return movie;
     }
 
     @GetMapping("/{id}/related")
@@ -142,29 +146,7 @@ public class MovieController {
     }
 
     private Object save(String id, MovieInput input, boolean exists) {
-        var props = new HashMap<String, Object>();
-        props.put("title", input.title().strip());
-        props.put("releaseDate", input.releaseDate().toString());
-        props.put("year", input.releaseDate().getYear());
-        props.put("genres", input.genres().stream().distinct().toList());
-        props.put("overview", input.overview());
-        props.put("director", input.director());
-        props.put("runtime", input.runtime());
-        props.put("artwork", input.artwork());
-        graph.write(tx -> {
-            if (
-                exists && !tx.run("MATCH (m:Movie {id:$id}) RETURN m", Map.of("id", id)).hasNext()
-            ) throw new ApiException(404, "Movie not found");
-            tx.run(
-                "MERGE (m:Movie {id:$id}) SET m += $props WITH m OPTIONAL MATCH (m)-[old:IN_GENRE]->() DELETE old",
-                Map.of("id", id, "props", props)
-            ).consume();
-            tx.run(
-                "MATCH (m:Movie {id:$id}) UNWIND m.genres AS name MERGE (g:Genre {name:name}) MERGE (m)-[:IN_GENRE]->(g)",
-                Map.of("id", id)
-            ).consume();
-            return null;
-        });
+        store.save(id, input, exists);
         return detail(id);
     }
 

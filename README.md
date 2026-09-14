@@ -16,7 +16,7 @@ An Angular movie app with four Spring Boot microservices, Neo4j recommendations,
 
 ![Neo4flix's live 3D reel rotates as the page scrolls, then the camera passes through its centre into the movie collection.](docs/media/cinema-motion.gif)
 
-*Recorded from the running application. The animation is rendered live with Three.js.*
+_Recorded from the running application. The animation is rendered live with Three.js._
 
 </div>
 
@@ -26,17 +26,18 @@ It is a movie recommendation application; movie playback is outside its scope. T
 
 ## What you can do
 
-| Feature | Experience |
-| --- | --- |
-| **Discover films** | Search by title, genre, or year; combine genre and release-date filters. |
-| **Explore the details** | Read a synopsis, director, runtime, release date, actual average rating, and related picks. |
-| **Build your taste profile** | Create, update, and delete 1–5 ratings with private notes. |
-| **Get recommendations** | See graph-based suggestions with reasons, filter the results, and hide or restore picks. |
-| **Keep a watchlist** | Save films to a persistent collection attached to your account. |
-| **Share a recommendation** | Create a link with a note, then copy it for a friend; update or revoke your links. Recipients sign in to view them. |
-| **Manage your account** | Edit your profile, change your password, enable authenticator-app 2FA, or delete your account. |
-| **Administer the catalogue** | Administrators can add, edit, and remove films. |
-| **Inspect the graph** | Administrators can explore live Movie, Genre and User nodes with rating values and timestamps. |
+| Feature                      | Experience                                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Discover films**           | Search by title, genre, or year; combine genre and release-date filters.                                                            |
+| **Explore the details**      | Read a synopsis, director, runtime, release date, actual average rating, and related picks.                                         |
+| **Build your taste profile** | Create, update, and delete 1–5 ratings with private notes.                                                                          |
+| **Get recommendations**      | See graph-based suggestions with reasons, filter the results, and hide or restore picks.                                            |
+| **Keep a watchlist**         | Save films to a persistent collection attached to your account.                                                                     |
+| **Share a recommendation**   | Create a link with a note, then copy it for a friend; update or revoke your links. Recipients sign in to view them.                 |
+| **Manage your account**      | Edit your profile, change your password, enable authenticator-app 2FA, connect/disconnect Google sign-in, or delete your account.   |
+| **Sign in with Google**      | Optional OAuth2 / OpenID Connect login with explicit account linking and local 2FA. [Configure your Google client](docs/oauth2.md). |
+| **Administer the catalogue** | Administrators can add, edit, and remove films.                                                                                     |
+| **Inspect the graph**        | Administrators can explore live Movie, Genre and User nodes with rating values and timestamps.                                      |
 
 The public entrance and signed-in Discover page share a real 3D reel, a moving film strip, and a camera transition through the reel's centre. Mobile has its own composition. The reel stays animated while visible, including when the system requests reduced motion, and its pinned stage fills the current viewport without an empty strip below it. Keyboard skip links lead directly to the catalogue; a static fallback handles unavailable graphics. Other page transitions still respect reduced-motion preferences.
 
@@ -153,15 +154,15 @@ flowchart LR
     Recs --> Graph
 ```
 
-| Component | Responsibility |
-| --- | --- |
-| **Movie service** | Catalogue CRUD, search, genre relationships, related films, and seed data. |
-| **User service** | Accounts, login, refresh sessions, profiles, 2FA, and watchlists. |
-| **Rating service** | User-owned ratings, private reviews, and rating timestamps. |
-| **Recommendation service** | Candidate ranking, explanations, hidden picks, and shared recommendations. |
-| **Common module** | Graph access, JWT validation, REST clients, consistent errors, and health checks. |
-| **Angular frontend** | Standalone pages, account workflows, movie browsing, and the 3D cinema scene. |
-| **Caddy + Nginx** | HTTPS termination, static delivery, auth throttling, and API routing. |
+| Component                  | Responsibility                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| **Movie service**          | Catalogue CRUD, search, genre relationships, related films, and seed data.        |
+| **User service**           | Accounts, login, refresh sessions, profiles, 2FA, and watchlists.                 |
+| **Rating service**         | User-owned ratings, private reviews, and rating timestamps.                       |
+| **Recommendation service** | Candidate ranking, explanations, hidden picks, and shared recommendations.        |
+| **Common module**          | Graph access, JWT validation, REST clients, consistent errors, and health checks. |
+| **Angular frontend**       | Standalone pages, account workflows, movie browsing, and the 3D cinema scene.     |
+| **Caddy + Nginx**          | HTTPS termination, static delivery, auth throttling, and API routing.             |
 
 The services run independently but deliberately share one Neo4j graph for cross-domain traversal. They communicate through REST when delegating application operations. This trades database-level service isolation for a consistent recommendation model; [the architecture notes](docs/architecture.md) explain the ownership boundaries and scaling implications.
 
@@ -297,24 +298,24 @@ neo4flix/
 
 ## Troubleshooting
 
-| Symptom | What to check |
-| --- | --- |
-| Docker daemon cannot be reached | Open Docker Desktop and wait for its Linux engine to start. |
-| Compose reports missing environment values | Run the platform's setup script from the repository folder. |
-| Browser rejects the HTTPS certificate | Export and trust the local CA, then restart the browser. |
+| Symptom                                            | What to check                                                          |
+| -------------------------------------------------- | ---------------------------------------------------------------------- |
+| Docker daemon cannot be reached                    | Open Docker Desktop and wait for its Linux engine to start.            |
+| Compose reports missing environment values         | Run the platform's setup script from the repository folder.            |
+| Browser rejects the HTTPS certificate              | Export and trust the local CA, then restart the browser.               |
 | Gateway returns an error immediately after startup | Check `docker compose ps` and service logs while health checks finish. |
-| Your changes are not visible | Run `docker compose up --build -d`, then reload the browser. |
+| Your changes are not visible                       | Run `docker compose up --build -d`, then reload the browser.           |
 
 ## Deployment and documentation
 
-| Guide | Contents |
-| --- | --- |
-| [Deployment](docs/deployment.md) | Public domain, production Compose override, TLS, backups, and traffic boundaries. |
-| [Architecture](docs/architecture.md) | Graph schema, service ownership, ranking, and scaling tradeoffs. |
-| [API reference](docs/api.md) | Endpoints, request bodies, responses, and access rules. |
-| [Cinema integration](docs/scroll-craft.md) | Scroll-craft, Three.js lifecycle, accessibility, and asset handling. |
-| [Validation](docs/validation.md) | Test coverage, recorded results, and practical limits. |
-| [Evaluation walkthrough](docs/evaluation.md) | Demonstration steps, graph/algorithm explanation and human evaluation questions. |
+| Guide                                        | Contents                                                                          |
+| -------------------------------------------- | --------------------------------------------------------------------------------- |
+| [Deployment](docs/deployment.md)             | Public domain, production Compose override, TLS, backups, and traffic boundaries. |
+| [Architecture](docs/architecture.md)         | Graph schema, service ownership, ranking, and scaling tradeoffs.                  |
+| [API reference](docs/api.md)                 | Endpoints, request bodies, responses, and access rules.                           |
+| [Cinema integration](docs/scroll-craft.md)   | Scroll-craft, Three.js lifecycle, accessibility, and asset handling.              |
+| [Validation](docs/validation.md)             | Test coverage, recorded results, and practical limits.                            |
+| [Evaluation walkthrough](docs/evaluation.md) | Demonstration steps, graph/algorithm explanation and human evaluation questions.  |
 
 A public deployment needs your own host, domain, DNS, and secrets. Caddy's production configuration obtains public certificates. Email verification, password-reset delivery, 2FA recovery, high availability, and large-catalogue query optimization remain future work.
 

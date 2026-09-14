@@ -25,6 +25,10 @@ const routes: Routes = [
   { path: 'login', loadComponent: () => import('./pages/auth').then((m) => m.AuthPage) },
   { path: 'register', loadComponent: () => import('./pages/auth').then((m) => m.AuthPage) },
   {
+    path: 'oauth2/complete',
+    loadComponent: () => import('./pages/oauth').then((m) => m.OAuthPage),
+  },
+  {
     path: '',
     canActivate: [signedIn],
     loadComponent: () => import('./pages/browse').then((m) => m.BrowsePage),

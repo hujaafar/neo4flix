@@ -6,6 +6,7 @@ export interface User {
   email: string;
   role: string;
   twoFactorEnabled: boolean;
+  googleLinked: boolean;
 }
 export interface Movie {
   id: string;
@@ -92,6 +93,9 @@ export class Api {
   }
   async authenticate(kind: 'login' | 'register', body: unknown) {
     this.accept(await this.request<AuthResponse>('/api/auth/' + kind, 'POST', body, false));
+  }
+  async completeOAuth(body: unknown) {
+    this.accept(await this.request<AuthResponse>('/api/auth/oauth2/complete', 'POST', body, false));
   }
   async logout() {
     try {

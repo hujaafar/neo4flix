@@ -1,5 +1,24 @@
 # Validation report
 
+## Google OAuth2 sign-in — 14 September 2026
+
+Added Google OpenID Connect/authorization-code login, explicit password-protected linking to existing accounts, first-time signup, preservation of local authenticator 2FA, safe return routes, and disconnecting Google with session revocation. Google access tokens are not persisted and the app continues using its own RS256 JWTs. [Setup and security details](oauth2.md).
+
+| Check                                                         | Result                                                                                                                                                                          |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full Maven verify                                             | 24 tests passed, no failures/skips; all four services packaged                                                                                                                  |
+| Google protocol tests                                         | Real Spring filters with a local signed-token provider: PKCE/state/nonce, invalid signatures/issuer/audience/expiry, verified email, browser-bound completion and Origin checks |
+| Angular production build                                      | Passed                                                                                                                                                                          |
+| Desktop/mobile browser suite                                  | 28/28 passed in 252.66 seconds, no skips or flaky results                                                                                                                       |
+| Live API suite after final Docker network/trust configuration | 58/58 passed in 10.48 seconds                                                                                                                                                   |
+| Bounded load test                                             | 700/700 successful requests; p95 111.1/114.3/163.7 ms at 4/8/16 workers; rating uniqueness and account cleanup passed                                                           |
+| Outbound Google HTTPS                                         | Java verified TLS to discovery, signing-key, token and user-info endpoints; unauthenticated GETs returned 200, 200, 404 and 401 respectively                                    |
+| Local runtime                                                 | All seven containers running; Neo4j and four APIs healthy; existing two user accounts retained and zero leftover browser/walkthrough fixtures                                   |
+
+The initial browser run exposed provider-availability reads consuming the login rate-limit allowance. Public provider discovery now has a separate nginx location; credential throttling remains enabled. Auth access logging is disabled to avoid retaining callback codes/state. The user service also needed an outbound Docker network for Google, and this laptop's already Windows-trusted AVG inspection CA was added to a private copy of Java's CA store. TLS and hostname verification stayed enabled. Native Windows builds were packaged into the normal Java 21/nginx runtimes to fit available memory. A Java Unix-socket issue was worked around only for the test process, using TCP loopback. Docker's temporary socket folders were moved aside during runtime recovery; database volumes were preserved.
+
+**Activation limit:** no real Google client ID/secret has been configured, so the Google button is visibly disabled. Protocol tests use a local test provider, and the six OAuth browser scenarios use explicitly mocked provider/completion responses. These verify the implementation and UI, not a live Google account login. Complete [Google client setup](oauth2.md), then check real signup, account linking, 2FA and disconnect/reconnect before claiming production OAuth validation. Mobile results use emulation.
+
 ## Normal-user walkthrough and expanded verification — 14 September 2026
 
 The manual walkthrough and expanded browser suite found and fixed an offscreen share form, misleading empty states on failed collection requests, and a missing accessible name on the mobile account link. The share form now explains the localhost-only scope of local links. See [the full normal-user report](user-walkthrough.md) for the feature checklist and verification limits.
@@ -25,24 +44,24 @@ Docker Desktop 4.90.0 was reinstalled and its Linux engine 29.7.2 started succes
 
 The complete Windows startup helper succeeded at `https://localhost:9443`, including CA export, Windows trust and a normal verified HTTPS request. The in-app browser loaded and displayed the live cinema entrance without a certificate warning. The earlier connection-reset and port-conflict blockers described below are resolved for this deployment.
 
-| Fresh check | Result |
-| --- | --- |
-| Docker Maven build | All four services built; 14 unit tests passed, none failed or skipped |
-| Angular production build | Passed inside the frontend image build |
-| Live HTTPS API suite | 58 assertions passed in 16.87 seconds, with certificate and hostname validation |
-| Bounded stress suite | 700/700 successful responses and content checks; rating uniqueness and account cleanup passed |
-| Desktop/mobile browser suite | 14/14 passed in 74.95 seconds; no failures, skips or flaky results |
-| Browser TLS | Certificate validation enabled in every Playwright context, including the no-JavaScript scenario; Node requests used the development and already trusted inspection CAs |
-| Visible UI review | Live in-app cinema entrance and live desktop/mobile graph screenshots inspected |
-| Restart after database dump | Database and API health checks passed; Windows HTTPS returned 200 |
+| Fresh check                  | Result                                                                                                                                                                  |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docker Maven build           | All four services built; 14 unit tests passed, none failed or skipped                                                                                                   |
+| Angular production build     | Passed inside the frontend image build                                                                                                                                  |
+| Live HTTPS API suite         | 58 assertions passed in 16.87 seconds, with certificate and hostname validation                                                                                         |
+| Bounded stress suite         | 700/700 successful responses and content checks; rating uniqueness and account cleanup passed                                                                           |
+| Desktop/mobile browser suite | 14/14 passed in 74.95 seconds; no failures, skips or flaky results                                                                                                      |
+| Browser TLS                  | Certificate validation enabled in every Playwright context, including the no-JavaScript scenario; Node requests used the development and already trusted inspection CAs |
+| Visible UI review            | Live in-app cinema entrance and live desktop/mobile graph screenshots inspected                                                                                         |
+| Restart after database dump  | Database and API health checks passed; Windows HTTPS returned 200                                                                                                       |
 
 The browser suite covers motion and reduced-motion preferences, real film links, genre selection through registration, no-JavaScript content, pause/resume, keyboard skip, graphics fallback, account journeys and the live administrator graph. The API and graph scenarios confirm actual stored ratings, access restrictions and absence of private profile/review data; administrator traces are disabled.
 
-| Concurrent workers | Requests | p50 | p95 | Maximum | Failed responses/content checks |
-| --- | --- | --- | --- | --- | --- |
-| 4 | 100 | 78.4 ms | 95.5 ms | 150.8 ms | 0 |
-| 8 | 200 | 78.0 ms | 118.6 ms | 174.1 ms | 0 |
-| 16 | 400 | 73.7 ms | 91.8 ms | 105.8 ms | 0 |
+| Concurrent workers | Requests | p50     | p95      | Maximum  | Failed responses/content checks |
+| ------------------ | -------- | ------- | -------- | -------- | ------------------------------- |
+| 4                  | 100      | 78.4 ms | 95.5 ms  | 150.8 ms | 0                               |
+| 8                  | 200      | 78.0 ms | 118.6 ms | 174.1 ms | 0                               |
+| 16                 | 400      | 73.7 ms | 91.8 ms  | 105.8 ms | 0                               |
 
 An offline dump of the fresh database was saved outside Docker before restarting it. This is a backup of the reconstructed database, not recovery of the previous volumes; a restore drill was not performed. The short stress run is not a large-catalogue or endurance benchmark. Public ACME issuance, production capacity, physical-device GPU performance and human evaluation questions remain outside these checks.
 
@@ -64,11 +83,11 @@ Verified against a separate Compose project and fresh graph at `https://localhos
 
 The graph page additionally passed two isolated Chrome checks at 1440px and 390px: keyboard selection, rating/table display, no outer overflow and recovery from a 503 followed by refresh. These used the production Angular bundle with explicitly mocked auth/graph responses on a local static server, and were visually inspected. They do not replace the pending live Docker browser suite. The Windows startup helper and optional build CA configure successfully, but a complete successful run of that helper and live browser graph inspection are not yet claimed. No publicly trusted ACME certificate or real-user recommendation relevance benchmark was evaluated.
 
-| Concurrent workers | Requests | p50 | p95 | Maximum | Failed responses/content checks |
-| --- | --- | --- | --- | --- | --- |
-| 4 | 100 | 75.4 ms | 95.3 ms | 154.3 ms | 0 |
-| 8 | 200 | 74.0 ms | 89.2 ms | 109.8 ms | 0 |
-| 16 | 400 | 77.1 ms | 104.1 ms | 127.6 ms | 0 |
+| Concurrent workers | Requests | p50     | p95      | Maximum  | Failed responses/content checks |
+| ------------------ | -------- | ------- | -------- | -------- | ------------------------------- |
+| 4                  | 100      | 75.4 ms | 95.3 ms  | 154.3 ms | 0                               |
+| 8                  | 200      | 74.0 ms | 89.2 ms  | 109.8 ms | 0                               |
+| 16                 | 400      | 77.1 ms | 104.1 ms | 127.6 ms | 0                               |
 
 The load mixes catalogue, recommendations, movie details and rating upserts equally, using one account and the 18-film starter catalogue. It is a short contention test, not an endurance test, large-data benchmark or proof of production capacity.
 
@@ -80,18 +99,18 @@ The results below are historical and retain their original scope. For evaluation
 
 Validated locally on **9 September 2026** against the Docker deployment at `https://localhost:8443`.
 
-| Check | Result |
-|---|---|
-| Maven compilation and executable packaging | All four Spring Boot services and shared module built |
-| Security primitive unit tests | 6 passed: RFC TOTP vectors, clock tolerance, replay rejection, password boundaries, authenticated encryption, SHA-256 vector |
-| Real HTTPS API integration | 52 assertions passed against Neo4j and the four running services |
-| Desktop Chromium journey | Passed at 1440 × 1000 |
-| Mobile Chromium journey | Passed using iPhone 13 viewport/emulation |
-| Frontend production bundle | Built with lazy-loaded pages and CSP-compatible external stylesheets |
-| Frontend dependency audit | `npm audit`: 0 known vulnerabilities reported |
-| Docker readiness | Neo4j and all four Spring services healthy; frontend and TLS gateway running |
-| Nginx configuration | Syntax validation passed |
-| Production Compose override | Configuration validation passed with placeholder domain/contact values |
+| Check                                      | Result                                                                                                                       |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Maven compilation and executable packaging | All four Spring Boot services and shared module built                                                                        |
+| Security primitive unit tests              | 6 passed: RFC TOTP vectors, clock tolerance, replay rejection, password boundaries, authenticated encryption, SHA-256 vector |
+| Real HTTPS API integration                 | 52 assertions passed against Neo4j and the four running services                                                             |
+| Desktop Chromium journey                   | Passed at 1440 × 1000                                                                                                        |
+| Mobile Chromium journey                    | Passed using iPhone 13 viewport/emulation                                                                                    |
+| Frontend production bundle                 | Built with lazy-loaded pages and CSP-compatible external stylesheets                                                         |
+| Frontend dependency audit                  | `npm audit`: 0 known vulnerabilities reported                                                                                |
+| Docker readiness                           | Neo4j and all four Spring services healthy; frontend and TLS gateway running                                                 |
+| Nginx configuration                        | Syntax validation passed                                                                                                     |
+| Production Compose override                | Configuration validation passed with placeholder domain/contact values                                                       |
 
 API checks cover authenticated catalogue access, password policy, unique email handling, role restrictions, tampered JWTs, parameterized search input, filters, pagination validation, rating range and movie existence, concurrent rating upserts, account ownership, REST delegation, recommendation exclusion/ranking/reasons, hidden picks, watchlist CRUD, share ownership/revocation, profile updates, refresh rotation and replay revocation, CSRF Origin rejection, logout, password changes, real TOTP verification, replay rejection, admin CRUD, and account deletion.
 
@@ -124,7 +143,6 @@ Installed Chrome loaded the final HTTPS entrance during these harness runs with 
 The public entrance and authenticated Discover now share a real 3D reel, moving film strip, independent landscape and camera transition. All 12 desktop/mobile scenarios passed across the full run (11) and the targeted long-test rerun (1). The long desktop capture hit its former 60-second test allowance; after disabling continuous trace screenshots and increasing the allowance, its unchanged assertions passed in 54.8 seconds. Motion, camera distance, pause/resume, compact layout, reduced motion, keyboard skip, graphics context loss, no-JavaScript content and Angular renderer disposal are covered alongside complete account journeys.
 
 The upstream harness captured 58 frames with no browser errors, failed requests or detected dead scroll. Actual desktop/mobile and static fallback compositions were visually inspected. An H.264 recording of the live browser is included in the delivery. Local Angular and Docker builds passed; all services remained running, and Nginx syntax passed. Installed Chrome used ordinary HTTPS certificate verification. Physical-device GPU performance remains untested. The previous backend results are historical; no backend changes were made in this revision. Full details and asset provenance are in `scrollcraft/builds/neo4flix/REPORT.md`.
-
 
 ## Follow-up: readable source formatting
 

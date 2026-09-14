@@ -73,6 +73,10 @@ public class AuthService {
     }
 
     public Map<String, Object> register(String email, String name, String password) {
+        return register(email, name, password, "");
+    }
+
+    Map<String, Object> register(String email, String name, String password, String googleSubject) {
         strongPassword(password);
         String id = UUID.randomUUID().toString();
         var p = Map.<String, Object>of(
@@ -83,10 +87,12 @@ public class AuthService {
             "name",
             name.strip(),
             "hash",
-            passwords.encode(password)
+            passwords.encode(password),
+            "googleSubject",
+            googleSubject
         );
         graph.execute(
-            "CREATE (u:User {id:$id,email:$email,name:$name,passwordHash:$hash,role:'USER',twoFactorEnabled:false,tokenVersion:0,failedAttempts:0,lockedUntil:0,lastTotpStep:-1,createdAt:toString(datetime())})",
+            "CREATE (u:User {id:$id,email:$email,name:$name,passwordHash:$hash,role:'USER',twoFactorEnabled:false,tokenVersion:0,failedAttempts:0,lockedUntil:0,lastTotpStep:-1,createdAt:toString(datetime())}) SET u.googleSubject=CASE WHEN $googleSubject='' THEN null ELSE $googleSubject END",
             p
         );
         return user(id);
@@ -110,19 +116,37 @@ public class AuthService {
             "role",
             user.get("role"),
             "twoFactorEnabled",
-            user.get("twoFactorEnabled")
+            user.get("twoFactorEnabled"),
+            "googleLinked",
+            user.containsKey("googleSubject")
         );
     }
 
     public Map<String, Object> authenticate(String email, String password, String code) {
+        return authenticate("email", email.strip().toLowerCase(Locale.ROOT), password, code);
+    }
+
+    // Called only with an identity verified by Spring's OIDC login, never with browser-supplied claims.
+    Map<String, Object> authenticateGoogle(String subject, String code) {
+        return authenticate("googleSubject", subject, null, code);
+    }
+
+    private Map<String, Object> authenticate(
+        String field,
+        String identity,
+        String password,
+        String code
+    ) {
         long now = Instant.now().getEpochSecond();
         var attempt = graph.write(tx -> {
             var result = tx.run(
-                "MATCH (u:User {email:$email}) SET u.authLock=coalesce(u.authLock,0)+1 RETURN properties(u) AS user",
-                Map.of("email", email.strip().toLowerCase(Locale.ROOT))
+                "MATCH (u:User {" +
+                    field +
+                    ":$identity}) SET u.authLock=coalesce(u.authLock,0)+1 RETURN properties(u) AS user",
+                Map.of("identity", identity)
             );
             if (!result.hasNext()) {
-                passwords.matches(password, dummyHash);
+                passwords.matches(password == null ? "" : password, dummyHash);
                 return Map.<String, Object>of(
                     "error",
                     "Invalid email, password or authenticator code"
@@ -130,7 +154,9 @@ public class AuthService {
             }
             Map<String, Object> u = result.single().get("user").asMap();
             if (number(u, "lockedUntil", 0) > now) return Map.<String, Object>of("locked", true);
-            boolean correct = passwords.matches(password, (String) u.get("passwordHash"));
+            boolean correct =
+                field.equals("googleSubject") ||
+                passwords.matches(password, (String) u.get("passwordHash"));
             long step = -1;
             if (correct && Boolean.TRUE.equals(u.get("twoFactorEnabled"))) {
                 step = Totp.verify(

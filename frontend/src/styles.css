@@ -1543,3 +1543,52 @@ textarea {
     scroll-behavior: auto !important;
   }
 }
+/* OAuth uses the same typography and spacing as the email login. */
+.oauth-button {
+  background: #fff;
+  color: #202124;
+  border: 1px solid #dadce0;
+  gap: 12px;
+}
+.oauth-button:hover:not(:disabled) {
+  background: #f1f3f4;
+}
+.google-mark {
+  font-weight: 700;
+  font-size: 21px;
+  color: #4285f4;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #363b2b;
+}
+.oauth-completion {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+.oauth-completion > .brand {
+  margin-bottom: 32px;
+}
+.oauth-completion h1 {
+  font-size: clamp(26px, 5vw, 38px);
+  line-height: 1.15;
+  margin: 20px 0;
+}
+.oauth-completion p {
+  overflow-wrap: anywhere;
+}
+.oauth-completion .button {
+  margin-top: 14px;
+}

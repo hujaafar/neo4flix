@@ -106,6 +106,21 @@ public class UserController {
         });
     }
 
+    @DeleteMapping("/oauth2/google")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void disconnectGoogle(
+        @AuthenticationPrincipal Jwt jwt,
+        @Valid @RequestBody Proof proof
+    ) {
+        sensitive(jwt, proof, false, (tx, u) -> {
+            tx.run(
+                "MATCH (u:User {id:$id}) REMOVE u.googleSubject",
+                Map.of("id", jwt.getSubject())
+            ).consume();
+            revoke(tx, jwt.getSubject());
+        });
+    }
+
     @PostMapping("/2fa/setup")
     public Object setup(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody Proof proof) {
         String secret = Totp.secret();

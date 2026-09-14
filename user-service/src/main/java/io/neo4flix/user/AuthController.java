@@ -82,14 +82,14 @@ public class AuthController {
             .build();
     }
 
-    private void checkOrigin(HttpServletRequest request) {
+    void checkOrigin(HttpServletRequest request) {
         if (!origin.equals(request.getHeader("Origin"))) throw new ApiException(
             403,
             "Request origin is not allowed"
         );
     }
 
-    private ResponseEntity<?> response(AuthService.Session session, int status) {
+    ResponseEntity<?> response(AuthService.Session session, int status) {
         return ResponseEntity.status(status)
             .header(HttpHeaders.SET_COOKIE, cookie(session.refreshToken(), Duration.ofDays(7)))
             .header(HttpHeaders.CACHE_CONTROL, "no-store")

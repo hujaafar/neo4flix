@@ -40,6 +40,21 @@ import { Api } from '../api';
                 : 'Sign in to your collection and recommendations.'
             }}
           </p>
+          @if (google(); as provider) {
+            <button
+              type="button"
+              class="button oauth-button full"
+              [disabled]="!provider.enabled || busy()"
+              (click)="googleLogin()"
+            >
+              <span class="google-mark" aria-hidden="true">G</span>
+              Continue with Google
+            </button>
+            @if (!provider.enabled) {
+              <p class="field-help">Google sign-in is awaiting setup. You can use email below.</p>
+            }
+            <div class="auth-divider"><span>or use your email</span></div>
+          }
           <form (ngSubmit)="submit()" #form="ngForm">
             @if (register) {
               <label>
@@ -140,11 +155,30 @@ export class AuthPage {
   busy = signal(false);
   error = signal('');
   returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+  google = signal<{ enabled: boolean } | null>(null);
   constructor() {
+    if (this.route.snapshot.queryParamMap.has('oauthError'))
+      this.error.set(
+        'Google sign-in was cancelled or could not be verified. Please try again, or use your email.',
+      );
+    void this.api
+      .request<{ id: string; enabled: boolean }[]>(
+        '/api/auth/oauth2/providers',
+        'GET',
+        undefined,
+        false,
+      )
+      .then((providers) => this.google.set(providers.find((p) => p.id === 'google') || null))
+      .catch(() => this.google.set(null));
     if (this.api.user())
       void this.router.navigateByUrl(
         this.returnUrl?.startsWith('/') && !this.returnUrl.startsWith('//') ? this.returnUrl : '/',
       );
+  }
+  googleLogin() {
+    window.location.assign(
+      '/api/auth/oauth2/authorize/google?returnUrl=' + encodeURIComponent(this.returnUrl || '/'),
+    );
   }
   async submit() {
     if (this.busy()) return;

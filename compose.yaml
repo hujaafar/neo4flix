@@ -95,15 +95,21 @@ services:
     build: { context: ., args: { SERVICE: movie-service } }
   user-service:
     <<: *api
+    # OAuth token and signing-key requests need outbound HTTPS; no service port is published.
+    networks: [backend, oauth]
     build: { context: ., args: { SERVICE: user-service } }
     environment:
       <<: *env
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Run setup first}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      JAVA_TOOL_OPTIONS: '-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError ${OAUTH_JAVA_OPTIONS:-}'
     volumes:
       - ./secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
       - ./secrets/jwt-private.pem:/run/secrets/jwt-private.pem:ro
+      - ./secrets/oauth:/run/oauth:ro
   rating-service:
     <<: *api
     build: { context: ., args: { SERVICE: rating-service } }
@@ -136,3 +142,4 @@ volumes:
 networks:
   backend: { internal: true }
   edge:
+  oauth:

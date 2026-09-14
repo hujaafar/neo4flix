@@ -4,6 +4,8 @@ import { Router, RouterLink } from '@angular/router';
 import { Api } from '../api';
 
 interface PendingLogin {
+  provider: 'google' | 'github';
+  providerName: string;
   mode: 'register' | 'link' | 'login';
   email: string;
   name: string;
@@ -22,7 +24,9 @@ interface PendingLogin {
         <span class="brand-dot">.</span>
       </a>
       <div class="panel">
-        <span class="eyebrow">SIGN IN WITH GOOGLE</span>
+        <span class="eyebrow">
+          {{ pending() ? 'SIGN IN WITH ' + pending()!.providerName : 'SECURE SIGN-IN' }}
+        </span>
         @if (pending(); as login) {
           <h1>
             {{
@@ -33,16 +37,16 @@ interface PendingLogin {
                   : 'One last check.'
             }}
           </h1>
-          <p class="muted">Google verified {{ login.email }}.</p>
+          <p class="muted">{{ login.providerName }} verified {{ login.email }}.</p>
           @if (login.mode === 'register') {
             <p>
               Choose a Neo4flix password for account security and email sign-in. Next time, you can
-              continue with Google.
+              continue with {{ login.providerName }}.
             </p>
           } @else if (login.mode === 'link') {
             <p>
-              This email already has a Neo4flix account. Enter its password to connect Google and
-              keep your existing movies and ratings.
+              This email already has a Neo4flix account. Enter its password to connect
+              {{ login.providerName }} and keep your existing movies and ratings.
             </p>
           } @else if (login.twoFactor) {
             <p>Enter your Neo4flix authenticator code to finish signing in.</p>
@@ -102,7 +106,7 @@ interface PendingLogin {
                 busy()
                   ? 'Signing you in…'
                   : login.mode === 'link'
-                    ? 'Connect Google and sign in'
+                    ? 'Connect ' + login.providerName + ' and sign in'
                     : login.mode === 'register'
                       ? 'Create account'
                       : 'Sign in'
@@ -110,7 +114,7 @@ interface PendingLogin {
             </button>
           </form>
           <button class="button subtle full" [disabled]="busy()" (click)="cancel()">
-            Cancel Google sign-in
+            Cancel {{ login.providerName }} sign-in
           </button>
         } @else {
           <h1>{{ loading() ? 'Checking your sign-in…' : 'Let’s try again.' }}</h1>

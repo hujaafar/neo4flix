@@ -17,7 +17,7 @@ public class OAuthService {
     }
 
     record Pending(
-        GoogleIdentity identity,
+        OAuthIdentity identity,
         String mode,
         String userId,
         long version,
@@ -27,9 +27,12 @@ public class OAuthService {
     ) {}
 
     @SuppressWarnings("unchecked")
-    Pending begin(GoogleIdentity identity, String returnUrl) {
+    Pending begin(OAuthIdentity identity, String returnUrl) {
+        var provider = identity.provider();
         var linked = graph.list(
-            "MATCH (u:User {googleSubject:$subject}) RETURN properties(u) AS user",
+            "MATCH (u:User {" +
+                provider.subjectProperty +
+                ":$subject}) RETURN properties(u) AS user",
             Map.of("subject", identity.subject())
         );
         Map<String, Object> user = linked.isEmpty()
@@ -43,9 +46,11 @@ public class OAuthService {
             );
             user = existing.isEmpty() ? null : (Map<String, Object>) existing.get(0).get("user");
             mode = user == null ? "register" : "link";
-            if (user != null && user.containsKey("googleSubject")) throw new ApiException(
+            if (user != null && user.containsKey(provider.subjectProperty)) throw new ApiException(
                 409,
-                "A different Google account is already connected. Sign in with your password."
+                "A different " +
+                    provider.label +
+                    " account is already connected. Sign in with your password."
             );
         }
         boolean twoFactor = user != null && Boolean.TRUE.equals(user.get("twoFactorEnabled"));
@@ -63,32 +68,34 @@ public class OAuthService {
     AuthService.Session complete(Pending pending, String name, String password, String code) {
         if (pending.expires() <= Instant.now().getEpochSecond()) throw new ApiException(
             401,
-            "Google sign-in expired. Please start again."
+            "Sign-in expired. Please start again."
         );
         var identity = pending.identity();
+        var provider = identity.provider();
         Map<String, Object> user;
         if (pending.mode().equals("register")) {
             if (
                 name == null || name.strip().length() < 2 || name.strip().length() > 80
             ) throw new ApiException(400, "Use a display name between 2 and 80 characters.");
             // Creating the user and binding the subject are one atomic write, with unique constraints.
-            user = auth.register(identity.email(), name, password, identity.subject());
+            user = auth.register(identity.email(), name, password, provider, identity.subject());
         } else {
             user = pending.mode().equals("link")
                 ? auth.authenticate(identity.email(), password == null ? "" : password, code)
-                : auth.authenticateGoogle(identity.subject(), code);
+                : auth.authenticateProvider(provider, identity.subject(), code);
             if (
                 !pending.userId().equals(user.get("id")) ||
                 pending.version() != AuthService.number(user, "tokenVersion", 0)
-            ) throw new ApiException(
-                401,
-                "Account security changed. Please start Google sign-in again."
-            );
+            ) throw new ApiException(401, "Account security changed. Please start sign-in again.");
             if (pending.mode().equals("link")) {
                 var rows = graph.write(tx ->
                     tx
                         .run(
-                            "MATCH (u:User {id:$id}) SET u.authLock=coalesce(u.authLock,0)+1 WITH u WHERE u.tokenVersion=$version AND u.googleSubject IS NULL SET u.googleSubject=$subject RETURN u.id AS id",
+                            "MATCH (u:User {id:$id}) SET u.authLock=coalesce(u.authLock,0)+1 WITH u WHERE u.tokenVersion=$version AND u." +
+                                provider.subjectProperty +
+                                " IS NULL SET u." +
+                                provider.subjectProperty +
+                                "=$subject RETURN u.id AS id",
                             Map.of(
                                 "id",
                                 pending.userId(),
@@ -106,7 +113,7 @@ public class OAuthService {
                 );
                 // Keep the version proven above: a concurrent security change must make session() fail.
                 user = new HashMap<>(user);
-                user.put("googleSubject", identity.subject());
+                user.put(provider.subjectProperty, identity.subject());
             }
         }
         return auth.session(user);

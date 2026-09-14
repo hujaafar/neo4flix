@@ -201,7 +201,12 @@ class OAuthSecurityTest {
         var callback = callback(start, "valid");
         assertEquals(ORIGIN + "/oauth2/complete", callback.getResponse().getRedirectedUrl());
         verify(oauth).begin(
-            new GoogleIdentity("google-subject", "oauth@example.test", "OAuth Viewer"),
+            new OAuthIdentity(
+                OAuthProvider.GOOGLE,
+                "google-subject",
+                "oauth@example.test",
+                "OAuth Viewer"
+            ),
             "/share/test-share"
         );
         verify(oauth, never()).complete(any(), any(), any(), any());
@@ -309,7 +314,7 @@ class OAuthSecurityTest {
         expired.setAttribute(
             OAuthController.PENDING,
             new OAuthService.Pending(
-                new GoogleIdentity("s", "a@example.test", "Viewer"),
+                new OAuthIdentity(OAuthProvider.GOOGLE, "s", "a@example.test", "Viewer"),
                 "login",
                 "id",
                 0,

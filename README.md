@@ -26,18 +26,19 @@ It is a movie recommendation application; movie playback is outside its scope. T
 
 ## What you can do
 
-| Feature                      | Experience                                                                                                                          |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Discover films**           | Search by title, genre, or year; combine genre and release-date filters.                                                            |
-| **Explore the details**      | Read a synopsis, director, runtime, release date, actual average rating, and related picks.                                         |
-| **Build your taste profile** | Create, update, and delete 1–5 ratings with private notes.                                                                          |
-| **Get recommendations**      | See graph-based suggestions with reasons, filter the results, and hide or restore picks.                                            |
-| **Keep a watchlist**         | Save films to a persistent collection attached to your account.                                                                     |
-| **Share a recommendation**   | Create a link with a note, then copy it for a friend; update or revoke your links. Recipients sign in to view them.                 |
-| **Manage your account**      | Edit your profile, change your password, enable authenticator-app 2FA, connect/disconnect Google sign-in, or delete your account.   |
-| **Sign in with Google**      | Optional OAuth2 / OpenID Connect login with explicit account linking and local 2FA. [Configure your Google client](docs/oauth2.md). |
-| **Administer the catalogue** | Administrators can add, edit, and remove films.                                                                                     |
-| **Inspect the graph**        | Administrators can explore live Movie, Genre and User nodes with rating values and timestamps.                                      |
+| Feature                      | Experience                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Discover films**           | Search by title, genre, or year; combine genre and release-date filters.                                                                          |
+| **Explore the details**      | Read a synopsis, director, runtime, release date, actual average rating, and related picks.                                                       |
+| **Build your taste profile** | Create, update, and delete 1–5 ratings with private notes.                                                                                        |
+| **Get recommendations**      | See graph-based suggestions with reasons, filter the results, and hide or restore picks.                                                          |
+| **Keep a watchlist**         | Save films to a persistent collection attached to your account.                                                                                   |
+| **Share a recommendation**   | Create a link with a note, then copy it for a friend; update or revoke your links. Recipients sign in to view them.                               |
+| **Manage your account**      | Edit your profile, change your password, enable authenticator-app 2FA, connect/disconnect Google or GitHub sign-in, or delete your account.       |
+| **Sign in with Google**      | Optional OAuth2 / OpenID Connect login with explicit account linking and local 2FA. [Configure your Google client](docs/oauth2.md).               |
+| **Sign in with GitHub**      | Optional OAuth2 login with verified primary email, explicit account linking and local 2FA. [Configure your GitHub client](docs/github-oauth2.md). |
+| **Administer the catalogue** | Administrators can add, edit, and remove films.                                                                                                   |
+| **Inspect the graph**        | Administrators can explore live Movie, Genre and User nodes with rating values and timestamps.                                                    |
 
 The public entrance and signed-in Discover page share a real 3D reel, a moving film strip, and a camera transition through the reel's centre. Mobile has its own composition. The reel stays animated while visible, including when the system requests reduced motion, and its pinned stage fills the current viewport without an empty strip below it. Keyboard skip links lead directly to the catalogue; a static fallback handles unavailable graphics. Other page transitions still respect reduced-motion preferences.
 

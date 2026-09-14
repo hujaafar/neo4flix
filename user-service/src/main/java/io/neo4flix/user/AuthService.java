@@ -73,10 +73,16 @@ public class AuthService {
     }
 
     public Map<String, Object> register(String email, String name, String password) {
-        return register(email, name, password, "");
+        return register(email, name, password, OAuthProvider.GOOGLE, "");
     }
 
-    Map<String, Object> register(String email, String name, String password, String googleSubject) {
+    Map<String, Object> register(
+        String email,
+        String name,
+        String password,
+        OAuthProvider provider,
+        String subject
+    ) {
         strongPassword(password);
         String id = UUID.randomUUID().toString();
         var p = Map.<String, Object>of(
@@ -88,11 +94,13 @@ public class AuthService {
             name.strip(),
             "hash",
             passwords.encode(password),
-            "googleSubject",
-            googleSubject
+            "subject",
+            subject
         );
         graph.execute(
-            "CREATE (u:User {id:$id,email:$email,name:$name,passwordHash:$hash,role:'USER',twoFactorEnabled:false,tokenVersion:0,failedAttempts:0,lockedUntil:0,lastTotpStep:-1,createdAt:toString(datetime())}) SET u.googleSubject=CASE WHEN $googleSubject='' THEN null ELSE $googleSubject END",
+            "CREATE (u:User {id:$id,email:$email,name:$name,passwordHash:$hash,role:'USER',twoFactorEnabled:false,tokenVersion:0,failedAttempts:0,lockedUntil:0,lastTotpStep:-1,createdAt:toString(datetime())}) SET u." +
+                provider.subjectProperty +
+                "=CASE WHEN $subject='' THEN null ELSE $subject END",
             p
         );
         return user(id);
@@ -118,7 +126,9 @@ public class AuthService {
             "twoFactorEnabled",
             user.get("twoFactorEnabled"),
             "googleLinked",
-            user.containsKey("googleSubject")
+            user.containsKey("googleSubject"),
+            "githubLinked",
+            user.containsKey("githubSubject")
         );
     }
 
@@ -126,9 +136,9 @@ public class AuthService {
         return authenticate("email", email.strip().toLowerCase(Locale.ROOT), password, code);
     }
 
-    // Called only with an identity verified by Spring's OIDC login, never with browser-supplied claims.
-    Map<String, Object> authenticateGoogle(String subject, String code) {
-        return authenticate("googleSubject", subject, null, code);
+    // Called only after server-side provider verification, never with browser-supplied claims.
+    Map<String, Object> authenticateProvider(OAuthProvider provider, String subject, String code) {
+        return authenticate(provider.subjectProperty, subject, null, code);
     }
 
     private Map<String, Object> authenticate(
@@ -155,7 +165,7 @@ public class AuthService {
             Map<String, Object> u = result.single().get("user").asMap();
             if (number(u, "lockedUntil", 0) > now) return Map.<String, Object>of("locked", true);
             boolean correct =
-                field.equals("googleSubject") ||
+                !field.equals("email") ||
                 passwords.matches(password, (String) u.get("passwordHash"));
             long step = -1;
             if (correct && Boolean.TRUE.equals(u.get("twoFactorEnabled"))) {

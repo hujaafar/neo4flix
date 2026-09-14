@@ -1553,6 +1553,13 @@ textarea {
 .oauth-button:hover:not(:disabled) {
   background: #f1f3f4;
 }
+.oauth-button + .oauth-button {
+  margin-top: 12px;
+}
+.auth-form > .field-help {
+  font-size: 0.8125rem;
+  margin-top: 6px;
+}
 .google-mark {
   font-weight: 700;
   font-size: 21px;

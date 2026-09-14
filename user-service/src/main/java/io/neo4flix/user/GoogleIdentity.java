@@ -5,8 +5,9 @@ import java.util.Locale;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 /** Application checks after Spring validates the ID token signature, issuer, audience and nonce. */
-record GoogleIdentity(String subject, String email, String name) {
-    static GoogleIdentity from(OidcUser user) {
+final class GoogleIdentity {
+
+    static OAuthIdentity from(OidcUser user) {
         String issuer = user.getIssuer().toString();
         String email = user.getEmail();
         if (
@@ -29,7 +30,8 @@ record GoogleIdentity(String subject, String email, String name) {
         String name = user.getFullName();
         if (name == null || name.strip().length() < 2) name = "Film lover";
         name = name.strip();
-        return new GoogleIdentity(
+        return new OAuthIdentity(
+            OAuthProvider.GOOGLE,
             user.getSubject(),
             email.toLowerCase(Locale.ROOT),
             name.substring(0, Math.min(80, name.length()))

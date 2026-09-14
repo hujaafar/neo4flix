@@ -16,10 +16,12 @@ Every auth POST requires an `Origin` header exactly matching `APP_ORIGIN`. These
 | POST   | `/api/auth/login`                                        | `{email,password,code?}` → token response; `code` required if 2FA is enabled                                     |
 | POST   | `/api/auth/refresh`                                      | Refresh cookie → rotated cookie and new access token                                                             |
 | POST   | `/api/auth/logout`                                       | Refresh cookie → 204; revokes all account sessions and clears cookie                                             |
-| GET    | `/api/auth/oauth2/providers`                             | Google provider availability; no secrets                                                                         |
+| GET    | `/api/auth/oauth2/providers`                             | Google and GitHub availability; no secrets                                                                       |
 | GET    | `/api/auth/oauth2/authorize/google?returnUrl=/watchlist` | Start Google authorization-code flow (browser redirect)                                                          |
+| GET    | `/api/auth/oauth2/authorize/github?returnUrl=/watchlist` | Start GitHub authorization-code flow (browser redirect)                                                          |
 | GET    | `/api/auth/oauth2/callback/google`                       | Spring validates code/state/PKCE/ID token and redirects to completion                                            |
-| GET    | `/api/auth/oauth2/pending`                               | Temporary browser-bound proof → `{mode,email,name,twoFactor,returnUrl}`                                          |
+| GET    | `/api/auth/oauth2/callback/github`                       | Spring validates code/state/PKCE; GitHub user and verified-primary-email APIs identify the account               |
+| GET    | `/api/auth/oauth2/pending`                               | Temporary browser-bound proof → `{provider,providerName,mode,email,name,twoFactor,returnUrl}`                    |
 | POST   | `/api/auth/oauth2/complete`                              | `{name?,password?,code?}` → existing token response; password required for signup/linking, code when 2FA enabled |
 | POST   | `/api/auth/oauth2/cancel`                                | Invalidates the temporary OAuth proof → 204                                                                      |
 
@@ -29,8 +31,9 @@ Access JWTs last 15 minutes, use RS256, issuer `neo4flix`, audience `neo4flix-ap
 
 | Method     | Path                                | Body / result                                                              |
 | ---------- | ----------------------------------- | -------------------------------------------------------------------------- |
-| GET        | `/api/users/me`                     | `{id,name,email,role,twoFactorEnabled,googleLinked}`                       |
+| GET        | `/api/users/me`                     | `{id,name,email,role,twoFactorEnabled,googleLinked,githubLinked}`          |
 | DELETE     | `/api/users/me/oauth2/google`       | `{password,code?}` → 204; disconnects Google and revokes sessions          |
+| DELETE     | `/api/users/me/oauth2/github`       | `{password,code?}` → 204; disconnects GitHub and revokes sessions          |
 | PATCH      | `/api/users/me`                     | `{name}` → updated profile                                                 |
 | DELETE     | `/api/users/me`                     | `{password,code?}` → 204, permanent account data deletion                  |
 | PUT        | `/api/users/me/password`            | `{password,newPassword,code?}` → 204, requires login again                 |

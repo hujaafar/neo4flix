@@ -8,17 +8,19 @@ import io.neo4flix.common.*;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class OAuthServiceTest {
 
     final Graph graph = mock(Graph.class);
     final AuthService auth = mock(AuthService.class);
     final OAuthService oauth = new OAuthService(graph, auth);
-    final GoogleIdentity identity = new GoogleIdentity(
-        "google-sub",
-        "viewer@example.test",
-        "Viewer"
-    );
+
+    OAuthIdentity identity(OAuthProvider provider) {
+        return new OAuthIdentity(provider, "provider-sub", "viewer@example.test", "Viewer");
+    }
+
     final Map<String, Object> user = Map.of(
         "id",
         "user-1",
@@ -28,8 +30,12 @@ class OAuthServiceTest {
         7L
     );
 
-    @Test
-    void requiresPasswordProofForAnExistingEmailAndDoesNotAutomaticallyLinkIt() {
+    @ParameterizedTest
+    @EnumSource(OAuthProvider.class)
+    void requiresPasswordProofForAnExistingEmailAndDoesNotAutomaticallyLinkIt(
+        OAuthProvider provider
+    ) {
+        var identity = identity(provider);
         when(graph.list(anyString(), anyMap())).thenReturn(
             List.of(),
             List.of(Map.of("user", user))
@@ -47,47 +53,69 @@ class OAuthServiceTest {
         verify(auth, never()).session(anyMap());
     }
 
-    @Test
-    void linkedIdentityStillUsesLocalTotpAndDetectsSecurityChanges() {
+    @ParameterizedTest
+    @EnumSource(OAuthProvider.class)
+    void linkedIdentityStillUsesLocalTotpAndDetectsSecurityChanges(OAuthProvider provider) {
+        var identity = identity(provider);
         when(graph.list(anyString(), anyMap())).thenReturn(List.of(Map.of("user", user)));
         var pending = oauth.begin(identity, "/ratings");
         assertEquals("login", pending.mode());
-        when(auth.authenticateGoogle(identity.subject(), "")).thenThrow(
+        when(auth.authenticateProvider(provider, identity.subject(), "")).thenThrow(
             new ApiException(401, "Authenticator required")
         );
         assertThrows(ApiException.class, () -> oauth.complete(pending, "", "", ""));
-        when(auth.authenticateGoogle(identity.subject(), "123456")).thenReturn(
+        when(auth.authenticateProvider(provider, identity.subject(), "123456")).thenReturn(
             Map.of("id", "user-1", "tokenVersion", 8L)
         );
         assertThrows(ApiException.class, () -> oauth.complete(pending, "", "", "123456"));
         verify(auth, never()).session(anyMap());
     }
 
-    @Test
-    void rejectsReplacingADifferentGoogleIdentityEvenWhenEmailMatches() {
+    @ParameterizedTest
+    @EnumSource(OAuthProvider.class)
+    void rejectsReplacingADifferentProviderIdentityEvenWhenEmailMatches(OAuthProvider provider) {
+        var identity = identity(provider);
         when(graph.list(anyString(), anyMap())).thenReturn(
             List.of(),
-            List.of(Map.of("user", Map.of("id", "user-1", "googleSubject", "different-sub")))
+            List.of(
+                Map.of("user", Map.of("id", "user-1", provider.subjectProperty, "different-sub"))
+            )
         );
         assertThrows(ApiException.class, () -> oauth.begin(identity, "/"));
     }
 
-    @Test
-    void newSignupCreatesSubjectAndAccountTogetherAndValidatesName() {
+    @ParameterizedTest
+    @EnumSource(OAuthProvider.class)
+    void newSignupCreatesSubjectAndAccountTogetherAndValidatesName(OAuthProvider provider) {
+        var identity = identity(provider);
         when(graph.list(anyString(), anyMap())).thenReturn(List.of());
         var pending = oauth.begin(identity, "/");
         assertEquals("register", pending.mode());
         assertThrows(ApiException.class, () -> oauth.complete(pending, " ", "password", ""));
         when(
-            auth.register(identity.email(), "Viewer", "StrongPassword!123", identity.subject())
+            auth.register(
+                identity.email(),
+                "Viewer",
+                "StrongPassword!123",
+                provider,
+                identity.subject()
+            )
         ).thenReturn(user);
         oauth.complete(pending, "Viewer", "StrongPassword!123", "");
-        verify(auth).register(identity.email(), "Viewer", "StrongPassword!123", identity.subject());
+        verify(auth).register(
+            identity.email(),
+            "Viewer",
+            "StrongPassword!123",
+            provider,
+            identity.subject()
+        );
         verify(auth).session(user);
     }
 
-    @Test
-    void expiredProofNeverAuthenticatesOrIssuesASession() {
+    @ParameterizedTest
+    @EnumSource(OAuthProvider.class)
+    void expiredProofNeverAuthenticatesOrIssuesASession(OAuthProvider provider) {
+        var identity = identity(provider);
         var expired = new OAuthService.Pending(
             identity,
             "login",
@@ -125,5 +153,27 @@ class OAuthServiceTest {
             "/\nevil"
         ))
             assertEquals("/", OAuthService.safeReturnUrl(bad));
+    }
+
+    @ParameterizedTest
+    @EnumSource(OAuthProvider.class)
+    void linkingPreservesTheOtherProviderAndAuthenticatedSecurityVersion(OAuthProvider provider) {
+        var identity = identity(provider);
+        var other = provider == OAuthProvider.GOOGLE ? OAuthProvider.GITHUB : OAuthProvider.GOOGLE;
+        var account = new HashMap<>(user);
+        account.put(other.subjectProperty, "other-provider-subject");
+        when(graph.list(anyString(), anyMap())).thenReturn(
+            List.of(),
+            List.of(Map.of("user", account))
+        );
+        var pending = oauth.begin(identity, "/");
+        assertEquals("link", pending.mode());
+        when(auth.authenticate(identity.email(), "password", "123456")).thenReturn(account);
+        when(graph.write(any())).thenReturn(List.of(mock(org.neo4j.driver.Record.class)));
+        oauth.complete(pending, "", "password", "123456");
+        var expected = new HashMap<>(account);
+        expected.put(provider.subjectProperty, identity.subject());
+        verify(auth).session(expected);
+        verify(graph).list(contains("{" + provider.subjectProperty + ":$subject}"), anyMap());
     }
 }

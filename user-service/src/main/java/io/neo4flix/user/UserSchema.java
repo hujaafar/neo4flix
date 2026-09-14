@@ -18,6 +18,10 @@ public class UserSchema {
     ) {
         return args -> {
             graph.execute(
+                "CREATE CONSTRAINT user_github_subject IF NOT EXISTS FOR (u:User) REQUIRE u.githubSubject IS UNIQUE",
+                Map.of()
+            );
+            graph.execute(
                 "CREATE CONSTRAINT user_google_subject IF NOT EXISTS FOR (u:User) REQUIRE u.googleSubject IS UNIQUE",
                 Map.of()
             );

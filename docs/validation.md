@@ -1,5 +1,24 @@
 # Validation report
 
+## GitHub OAuth2 sign-in — 14 September 2026
+
+Added GitHub authorization-code sign-in independently of Google, with verified primary email, stable numeric identity, explicit password/2FA-protected linking, provider-specific connection flags, and disconnect with session revocation. Both providers can connect to the same Neo4flix account. [GitHub setup and security](github-oauth2.md).
+
+| Check                                   | Result                                                                                                                                                                                   |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full Maven verify                       | 39/39 tests passed; all four services packaged                                                                                                                                           |
+| GitHub protocol                         | Actual Spring code exchange and HTTP user/email lookups against a local test provider; PKCE, state, callback mix-up, unverified/missing primary email, and provider API failures checked |
+| Shared account security                 | Both providers tested for explicit linking, independent identity namespaces, preserved security version and real AuthService/TOTP rejection of missing, invalid or replayed codes        |
+| Angular production build and formatting | Passed                                                                                                                                                                                   |
+| Full desktop/mobile browser suite       | 40/40 passed in 242.82 seconds, no skips or flaky results                                                                                                                                |
+| Live HTTPS API suite                    | 58/58 passed in 9.34 seconds                                                                                                                                                             |
+| GitHub outbound HTTPS                   | Java verified TLS to authorization/token endpoints (unauthenticated GET 302/404) and user/email APIs (401/401)                                                                           |
+| Runtime                                 | Seven containers running; database and four APIs healthy; both configured-provider availability flags false until credentials are supplied                                               |
+
+The first larger browser run hit the existing login throttle because the simulated OAuth UI cases repeatedly called the live refresh endpoint. Those UI-only cases now mock refresh/provider availability as well as external completion responses, isolating them from the live user journeys. The final full suite passed with production throttling unchanged. Three disposable accounts left by the failed run were removed by exact ID; the two existing accounts were preserved and the final database check found no remaining test accounts.
+
+**Activation limit:** real GitHub and Google client credentials remain unconfigured. The login buttons clearly indicate setup is pending. The protocol tests use local test providers, and the 18 OAuth browser cases explicitly mock provider/session responses; the remaining 22 browser cases use the running application. This validates code and UI behavior, not a live GitHub account authorization. Complete [GitHub OAuth App setup](github-oauth2.md), then verify real signup, account linking, 2FA and disconnect. Mobile tests use emulation. Load-test results in earlier sections belong to those earlier runs.
+
 ## Google OAuth2 sign-in — 14 September 2026
 
 Added Google OpenID Connect/authorization-code login, explicit password-protected linking to existing accounts, first-time signup, preservation of local authenticator 2FA, safe return routes, and disconnecting Google with session revocation. Google access tokens are not persisted and the app continues using its own RS256 JWTs. [Setup and security details](oauth2.md).

@@ -157,59 +157,62 @@ import { Api, User } from '../api';
           <p class="field-help">Changing security settings signs out all your sessions.</p>
         </form>
       </section>
-      <section class="panel">
-        <div class="section-line">
-          <h2>Google sign-in</h2>
-          <span class="status-pill" [class.enabled]="api.user()?.googleLinked">
-            {{ api.user()?.googleLinked ? 'Connected' : 'Not connected' }}
-          </span>
-        </div>
-        @if (api.user()?.googleLinked) {
-          <p class="muted">
-            Google signs you in to this account. Your Neo4flix password and authenticator settings
-            still apply to account security.
-          </p>
-          <form (ngSubmit)="disconnectGoogle()" #disconnect="ngForm">
-            <label>
-              Current password
-              <input
-                name="googlePassword"
-                type="password"
-                [(ngModel)]="googlePassword"
-                required
-                maxlength="72"
-                autocomplete="current-password"
-              />
-            </label>
-            @if (api.user()?.twoFactorEnabled) {
+      @for (provider of providers; track provider.id) {
+        <section class="panel">
+          <div class="section-line">
+            <h2>{{ provider.name }} sign-in</h2>
+            <span class="status-pill" [class.enabled]="connected(provider.id)">
+              {{ connected(provider.id) ? 'Connected' : 'Not connected' }}
+            </span>
+          </div>
+          @if (connected(provider.id)) {
+            <p class="muted">
+              {{ provider.name }} signs you in to this account. Your Neo4flix password and
+              authenticator settings still apply to account security.
+            </p>
+            <form (ngSubmit)="disconnectProvider(provider)" #disconnect="ngForm">
               <label>
-                Authenticator code
+                Current password
                 <input
-                  name="googleCode"
-                  [(ngModel)]="googleCode"
+                  name="password"
+                  type="password"
+                  [(ngModel)]="provider.password"
                   required
-                  pattern="[0-9]{6}"
-                  maxlength="6"
-                  inputmode="numeric"
-                  autocomplete="one-time-code"
+                  maxlength="72"
+                  autocomplete="current-password"
                 />
               </label>
-            }
-            <button class="button subtle" [disabled]="busy() || disconnect.invalid">
-              Disconnect Google
-            </button>
-            <p class="field-help">
-              This signs out all sessions. You can sign in again using your email and Neo4flix
-              password.
+              @if (api.user()?.twoFactorEnabled) {
+                <label>
+                  Authenticator code
+                  <input
+                    name="code"
+                    [(ngModel)]="provider.code"
+                    required
+                    pattern="[0-9]{6}"
+                    maxlength="6"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                  />
+                </label>
+              }
+              <button class="button subtle" [disabled]="busy() || disconnect.invalid">
+                Disconnect {{ provider.name }}
+              </button>
+              <p class="field-help">
+                This signs out all sessions. You can sign in again using your email and Neo4flix
+                password.
+              </p>
+            </form>
+          } @else {
+            <p class="muted">
+              To connect {{ provider.name }}, sign out and choose “Continue with
+              {{ provider.name }}” using the same email. You will confirm your Neo4flix password
+              before linking.
             </p>
-          </form>
-        } @else {
-          <p class="muted">
-            To connect Google, sign out and choose “Continue with Google” using the same email. You
-            will confirm your Neo4flix password before linking.
-          </p>
-        }
-      </section>
+          }
+        </section>
+      }
       <section class="panel danger-panel">
         <h2>Delete account</h2>
         <p class="muted">Permanently delete your profile, ratings, watchlist, and shared picks.</p>
@@ -257,8 +260,13 @@ export class AccountPage {
   changeCode = '';
   deletePassword = '';
   deleteCode = '';
-  googlePassword = '';
-  googleCode = '';
+  providers = [
+    { id: 'google', name: 'Google', password: '', code: '' },
+    { id: 'github', name: 'GitHub', password: '', code: '' },
+  ];
+  connected(id: string) {
+    return id === 'google' ? this.api.user()?.googleLinked : this.api.user()?.githubLinked;
+  }
   secret = signal('');
   busy = signal(false);
   error = signal('');
@@ -339,11 +347,11 @@ export class AccountPage {
     await this.api.logout();
     await this.router.navigate(['/login']);
   }
-  disconnectGoogle() {
+  disconnectProvider(provider: { id: string; password: string; code: string }) {
     void this.action(async () => {
-      await this.api.request('/api/users/me/oauth2/google', 'DELETE', {
-        password: this.googlePassword,
-        code: this.googleCode,
+      await this.api.request('/api/users/me/oauth2/' + provider.id, 'DELETE', {
+        password: provider.password,
+        code: provider.code,
       });
       await this.finishSecurity();
     });

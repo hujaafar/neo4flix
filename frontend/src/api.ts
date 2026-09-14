@@ -7,6 +7,7 @@ export interface User {
   role: string;
   twoFactorEnabled: boolean;
   googleLinked: boolean;
+  githubLinked: boolean;
 }
 export interface Movie {
   id: string;

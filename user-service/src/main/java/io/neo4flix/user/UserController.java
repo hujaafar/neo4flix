@@ -106,15 +106,17 @@ public class UserController {
         });
     }
 
-    @DeleteMapping("/oauth2/google")
+    @DeleteMapping("/oauth2/{providerId}")
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
-    public void disconnectGoogle(
+    public void disconnectProvider(
+        @PathVariable String providerId,
         @AuthenticationPrincipal Jwt jwt,
         @Valid @RequestBody Proof proof
     ) {
+        var provider = OAuthProvider.fromId(providerId);
         sensitive(jwt, proof, false, (tx, u) -> {
             tx.run(
-                "MATCH (u:User {id:$id}) REMOVE u.googleSubject",
+                "MATCH (u:User {id:$id}) REMOVE u." + provider.subjectProperty,
                 Map.of("id", jwt.getSubject())
             ).consume();
             revoke(tx, jwt.getSubject());

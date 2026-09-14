@@ -17,22 +17,31 @@ public class OAuthController {
     static final String PENDING = "neo4flix.oauth.pending";
     private final OAuthService oauth;
     private final AuthController auth;
-    private final boolean enabled;
+    private final Map<OAuthProvider, Boolean> enabled;
 
     public OAuthController(
         OAuthService oauth,
         AuthController auth,
         @Value("${app.oauth2.google-client-id:}") String clientId,
-        @Value("${app.oauth2.google-client-secret:}") String clientSecret
+        @Value("${app.oauth2.google-client-secret:}") String clientSecret,
+        @Value("${app.oauth2.github-client-id:}") String githubId,
+        @Value("${app.oauth2.github-client-secret:}") String githubSecret
     ) {
         this.oauth = oauth;
         this.auth = auth;
-        enabled = !clientId.isBlank() && !clientSecret.isBlank();
+        enabled = Map.of(
+            OAuthProvider.GOOGLE,
+            !clientId.isBlank() && !clientSecret.isBlank(),
+            OAuthProvider.GITHUB,
+            !githubId.isBlank() && !githubSecret.isBlank()
+        );
     }
 
     @GetMapping("/providers")
     public Object providers() {
-        return List.of(Map.of("id", "google", "name", "Google", "enabled", enabled));
+        return Arrays.stream(OAuthProvider.values())
+            .map(p -> Map.of("id", p.id, "name", p.label, "enabled", enabled.get(p)))
+            .toList();
     }
 
     @GetMapping("/pending")
@@ -42,6 +51,10 @@ public class OAuthController {
             .cacheControl(CacheControl.noStore())
             .body(
                 Map.of(
+                    "provider",
+                    pending.identity().provider().id,
+                    "providerName",
+                    pending.identity().provider().label,
                     "mode",
                     pending.mode(),
                     "email",
@@ -93,10 +106,11 @@ public class OAuthController {
     }
 
     private OAuthService.Pending pendingIdentity(HttpSession session) {
-        if (!enabled || session == null) throw expired();
+        if (session == null) throw expired();
         try {
             if (
                 session.getAttribute(PENDING) instanceof OAuthService.Pending pending &&
+                enabled.get(pending.identity().provider()) &&
                 pending.expires() > Instant.now().getEpochSecond()
             ) return pending;
         } catch (IllegalStateException ignored) {
@@ -106,9 +120,6 @@ public class OAuthController {
     }
 
     private ApiException expired() {
-        return new ApiException(
-            401,
-            "Google sign-in expired or is unavailable. Please start again."
-        );
+        return new ApiException(401, "Sign-in expired or is unavailable. Please start again.");
     }
 }

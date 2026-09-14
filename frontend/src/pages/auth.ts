@@ -40,19 +40,37 @@ import { Api } from '../api';
                 : 'Sign in to your collection and recommendations.'
             }}
           </p>
-          @if (google(); as provider) {
+          @for (provider of providers(); track provider.id) {
             <button
               type="button"
               class="button oauth-button full"
               [disabled]="!provider.enabled || busy()"
-              (click)="googleLogin()"
+              (click)="providerLogin(provider.id)"
             >
-              <span class="google-mark" aria-hidden="true">G</span>
-              Continue with Google
+              @if (provider.id === 'google') {
+                <span class="google-mark" aria-hidden="true">G</span>
+              } @else {
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M12 .75a11.25 11.25 0 0 0-3.558 21.923c.563.104.77-.244.77-.542 0-.267-.01-1.155-.016-2.095-3.13.68-3.79-1.327-3.79-1.327-.512-1.3-1.25-1.646-1.25-1.646-1.022-.7.078-.686.078-.686 1.13.08 1.725 1.16 1.725 1.16 1.005 1.723 2.637 1.225 3.28.937.102-.729.393-1.225.715-1.507-2.5-.284-5.128-1.25-5.128-5.56 0-1.228.44-2.232 1.16-3.02-.117-.284-.503-1.43.11-2.98 0 0 .945-.303 3.095 1.154a10.8 10.8 0 0 1 5.626 0c2.148-1.457 3.092-1.154 3.092-1.154.615 1.55.23 2.696.113 2.98.722.788 1.16 1.792 1.16 3.02 0 4.32-2.632 5.273-5.14 5.552.404.35.764 1.034.764 2.084 0 1.506-.014 2.72-.014 3.09 0 .3.204.65.774.54A11.25 11.25 0 0 0 12 .75Z"
+                  />
+                </svg>
+              }
+              Continue with {{ provider.name }}
             </button>
             @if (!provider.enabled) {
-              <p class="field-help">Google sign-in is awaiting setup. You can use email below.</p>
+              <p class="field-help">
+                {{ provider.name }} sign-in is awaiting setup. You can use email below.
+              </p>
             }
+          }
+          @if (providers().length) {
             <div class="auth-divider"><span>or use your email</span></div>
           }
           <form (ngSubmit)="submit()" #form="ngForm">
@@ -155,29 +173,36 @@ export class AuthPage {
   busy = signal(false);
   error = signal('');
   returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-  google = signal<{ enabled: boolean } | null>(null);
+  providers = signal<{ id: string; name: string; enabled: boolean }[]>([]);
   constructor() {
     if (this.route.snapshot.queryParamMap.has('oauthError'))
       this.error.set(
-        'Google sign-in was cancelled or could not be verified. Please try again, or use your email.',
+        (this.route.snapshot.queryParamMap.get('oauthError') === 'github' ? 'GitHub' : 'Google') +
+          ' sign-in was cancelled or could not be verified. Please try again, or use your email.',
       );
     void this.api
-      .request<{ id: string; enabled: boolean }[]>(
+      .request<{ id: string; name: string; enabled: boolean }[]>(
         '/api/auth/oauth2/providers',
         'GET',
         undefined,
         false,
       )
-      .then((providers) => this.google.set(providers.find((p) => p.id === 'google') || null))
-      .catch(() => this.google.set(null));
+      .then((providers) =>
+        this.providers.set(providers.filter((p) => ['google', 'github'].includes(p.id))),
+      )
+      .catch(() => this.providers.set([]));
     if (this.api.user())
       void this.router.navigateByUrl(
         this.returnUrl?.startsWith('/') && !this.returnUrl.startsWith('//') ? this.returnUrl : '/',
       );
   }
-  googleLogin() {
+  providerLogin(providerId: string) {
+    if (!this.providers().some((p) => p.id === providerId && p.enabled)) return;
     window.location.assign(
-      '/api/auth/oauth2/authorize/google?returnUrl=' + encodeURIComponent(this.returnUrl || '/'),
+      '/api/auth/oauth2/authorize/' +
+        providerId +
+        '?returnUrl=' +
+        encodeURIComponent(this.returnUrl || '/'),
     );
   }
   async submit() {

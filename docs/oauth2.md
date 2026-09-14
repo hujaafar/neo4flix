@@ -2,6 +2,8 @@
 
 Neo4flix supports **Continue with Google** alongside email/password login and authenticator 2FA. The authorization-code flow uses Spring Security, PKCE (S256), state, nonce, and verified Google ID tokens. Google credentials are optional: email/password sign-in remains available when they are absent.
 
+**GitHub is also supported independently:** see [GitHub OAuth2 setup](github-oauth2.md). Both providers share the same explicit account linking, local authenticator requirement, completion cookie and session revocation rules. A profile may connect both providers.
+
 ## Enable Google sign-in
 
 1. Open [Google Auth Platform](https://console.cloud.google.com/auth/overview) and select or create your own project. Configure the app name, support email, audience and contact details. For a testing audience, add the Google accounts that will test the app.

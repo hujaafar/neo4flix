@@ -213,7 +213,7 @@ Security changes and logout revoke existing account sessions. Private rating not
 
 ## Testing
 
-The audit-fix build passed **14 unit tests**, **58 live HTTPS API assertions**, and **700 bounded stress requests** on **14 September 2026**. The earlier 12 browser scenarios passed on 9 September; the expanded 14-scenario browser rerun is pending recovery of the shared Docker host. These are recorded development results, not a live CI badge. The [validation report](docs/validation.md) records individual runs, fixes, reruns, and limitations.
+The fresh Docker rebuild passed **14 unit tests**, **58 live HTTPS API assertions**, **700 bounded stress requests**, and **all 14 desktop/mobile browser scenarios** on **14 September 2026**. Browser certificate validation was enabled. Windows and the in-app browser also opened the local HTTPS site successfully. These are recorded development results, not a live CI badge. The [validation report](docs/validation.md) records individual runs, fixes, reruns, and limitations.
 
 ### Backend
 
@@ -252,7 +252,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Playwright covers desktop/mobile account journeys, actual movie actions, motion, keyboard access, reduced motion, WebGL fallback, and renderer cleanup. Artifacts are saved under `frontend/test-results/`. The isolated test browser accepts the local development certificate; application TLS verification remains enabled.
+Playwright covers desktop/mobile account journeys, actual movie actions, motion, keyboard access, reduced motion, WebGL fallback, and renderer cleanup. Artifacts are saved under `frontend/test-results/`. HTTPS certificate validation is enabled in every browser context. Trust the exported development CA before running the suite; on Windows, `scripts/start.ps1 -TrustLocalCertificate` handles browser trust. Node-based test requests also need `NODE_EXTRA_CA_CERTS` set to the absolute path of `secrets/local-ca.crt` before starting Playwright. If an HTTPS inspection proxy is present, use a PEM file containing both the development CA and your already trusted proxy CA.
 
 If Chrome is already installed, set `NEO4FLIX_BROWSER_CHANNEL=chrome` instead of downloading Playwright's browser. In PowerShell: `$env:NEO4FLIX_BROWSER_CHANNEL='chrome'`. The administrator graph scenario uses the local `.env` bootstrap credentials and disables traces. Run this suite on the generated development stack, with 2FA disabled for that test administrator.
 

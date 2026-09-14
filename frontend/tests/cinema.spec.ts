@@ -226,7 +226,7 @@ test('genre selection survives registration and opens the filtered live catalogu
 test('entrance remains readable with JavaScript disabled', async ({ browser }, info) => {
   const context = await browser.newContext({
     javaScriptEnabled: false,
-    ignoreHTTPSErrors: true,
+    ignoreHTTPSErrors: false,
     viewport:
       info.project.name === 'desktop' ? { width: 1440, height: 1000 } : { width: 390, height: 844 },
   });

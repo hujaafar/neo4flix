@@ -1,5 +1,34 @@
 # Validation report
 
+## Fresh Docker rebuild and live recheck — 14 September 2026
+
+Docker Desktop 4.90.0 was reinstalled and its Linux engine 29.7.2 started successfully. This was a clean rebuild from source and the 18-film seed catalogue; previous Docker volume contents were not restored. The existing local project secrets were retained.
+
+The complete Windows startup helper succeeded at `https://localhost:9443`, including CA export, Windows trust and a normal verified HTTPS request. The in-app browser loaded and displayed the live cinema entrance without a certificate warning. The earlier connection-reset and port-conflict blockers described below are resolved for this deployment.
+
+| Fresh check | Result |
+| --- | --- |
+| Docker Maven build | All four services built; 14 unit tests passed, none failed or skipped |
+| Angular production build | Passed inside the frontend image build |
+| Live HTTPS API suite | 58 assertions passed in 16.87 seconds, with certificate and hostname validation |
+| Bounded stress suite | 700/700 successful responses and content checks; rating uniqueness and account cleanup passed |
+| Desktop/mobile browser suite | 14/14 passed in 74.95 seconds; no failures, skips or flaky results |
+| Browser TLS | Certificate validation enabled in every Playwright context, including the no-JavaScript scenario; Node requests used the development and already trusted inspection CAs |
+| Visible UI review | Live in-app cinema entrance and live desktop/mobile graph screenshots inspected |
+| Restart after database dump | Database and API health checks passed; Windows HTTPS returned 200 |
+
+The browser suite covers motion and reduced-motion preferences, real film links, genre selection through registration, no-JavaScript content, pause/resume, keyboard skip, graphics fallback, account journeys and the live administrator graph. The API and graph scenarios confirm actual stored ratings, access restrictions and absence of private profile/review data; administrator traces are disabled.
+
+| Concurrent workers | Requests | p50 | p95 | Maximum | Failed responses/content checks |
+| --- | --- | --- | --- | --- | --- |
+| 4 | 100 | 78.4 ms | 95.5 ms | 150.8 ms | 0 |
+| 8 | 200 | 78.0 ms | 118.6 ms | 174.1 ms | 0 |
+| 16 | 400 | 73.7 ms | 91.8 ms | 105.8 ms | 0 |
+
+An offline dump of the fresh database was saved outside Docker before restarting it. This is a backup of the reconstructed database, not recovery of the previous volumes; a restore drill was not performed. The short stress run is not a large-catalogue or endurance benchmark. Public ACME issuance, production capacity, physical-device GPU performance and human evaluation questions remain outside these checks.
+
+This laptop shares a 4 GB WSL runtime with another project. Run their full stacks sequentially to avoid memory exhaustion. The results below remain historical records of earlier attempts.
+
 ## Audit fixes — 14 September 2026
 
 The corrected source adds actual Neo4j-OGM persistence, the GDS Jaccard recommendation signal, an administrator graph view, framework HTTP error handling, LF checkout rules, a Windows startup/trust helper and a repeatable stress harness. The earlier pinned revision `17d232d` does not contain these changes.

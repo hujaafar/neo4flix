@@ -9,7 +9,7 @@ export default defineConfig({
   use: {
     channel: process.env['NEO4FLIX_BROWSER_CHANNEL'] || undefined,
     baseURL: process.env['NEO4FLIX_TEST_URL'] || 'https://localhost:8443',
-    ignoreHTTPSErrors: true,
+    ignoreHTTPSErrors: false,
     trace: { mode: 'retain-on-failure', screenshots: false, snapshots: true, sources: true },
     screenshot: 'only-on-failure',
   },

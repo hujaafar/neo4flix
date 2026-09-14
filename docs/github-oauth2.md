@@ -21,12 +21,12 @@ Neo4flix supports **Continue with GitHub** alongside Google, email/password and 
    .\scripts\configure-github.ps1
    ```
 
-   Enter the client ID and secret locally. The secret prompt is hidden; the values go in the ignored `.env`. Do not put them in source code, screenshots, issues or chat. On other systems set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` directly in that private file.
+   At the first prompt, copy the value under **Client ID**, above the **Client secrets** section on GitHub. At the second prompt, paste the newly generated **client secret**. These are different values. Both prompts hide input, including accidental secret pastes; press Enter after each. The script rejects a secret-shaped value in the Client ID field without saving anything. Values go in the ignored `.env`. Do not put them in source code, screenshots, issues or chat. On other systems set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` directly in that private file.
 
 4. Apply the settings:
 
    ```powershell
-   docker compose up -d --no-deps user-service
+   docker compose up -d --no-deps --wait user-service
    ```
 
    For a checkout that has not been built, complete the normal project setup/build first. Reload `/login` after the user service is healthy. The button becomes available when both client values are present; successful provider authorization still depends on valid credentials and an exact callback URL.

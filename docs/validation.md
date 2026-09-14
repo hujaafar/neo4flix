@@ -1,5 +1,11 @@
 # Validation report
 
+## Normal-user walkthrough and expanded verification — 14 September 2026
+
+The manual walkthrough and expanded browser suite found and fixed an offscreen share form, misleading empty states on failed collection requests, and a missing accessible name on the mobile account link. The share form now explains the localhost-only scope of local links. See [the full normal-user report](user-walkthrough.md) for the feature checklist and verification limits.
+
+The final deployed frontend passed **22/22 desktop/mobile browser scenarios in 224.79 seconds**, with no skips or flaky results; **58/58 live HTTPS API checks in 10.31 seconds**; and **700/700 load responses** at 4/8/16 workers (p95 85.6/82.0/94.0 ms). The production Angular build and formatting checks passed. Only the frontend container was replaced; all seven containers remain running and the database/four APIs report healthy. Existing data was preserved and the final scoped check found zero leftover walkthrough accounts. The controlled collection-error tests simulate only the failed response; retries and all other successful feature requests use the live database.
+
 ## Continuous reel motion and scroll gap fix — 14 September 2026
 
 The shared 3D reel now stays animated while visible on the public entrance and signed-in Discover page, including with reduced-motion preferences enabled. Manual pause controls were removed at the owner's request. Keyboard skip links, offscreen/background suspension, renderer cleanup and graphics fallback remain; other page transitions still respect reduced motion.

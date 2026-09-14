@@ -54,7 +54,11 @@ import { Api } from './api';
         </nav>
         <div class="sidebar-bottom">
           <p class="small-note">Good films. Better connections.</p>
-          <a routerLink="/account" class="profile-link">
+          <a
+            routerLink="/account"
+            class="profile-link"
+            [attr.aria-label]="'Account & security for ' + api.user()?.name"
+          >
             <span class="avatar">{{ api.user()?.name?.charAt(0) }}</span>
             <span>
               <strong>{{ api.user()?.name }}</strong>

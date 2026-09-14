@@ -1,4 +1,12 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -51,7 +59,13 @@ import { MovieCard } from '../ui';
             <button class="button primary" [disabled]="busy()" (click)="toggleWatch()">
               {{ watched() ? '✓ In your watchlist' : '+ Add to watchlist' }}
             </button>
-            <button class="button subtle" (click)="showShare = !showShare">
+            <button
+              #shareTrigger
+              class="button subtle"
+              (click)="toggleShare()"
+              [attr.aria-expanded]="showShare"
+              aria-controls="share-panel"
+            >
               Share this film ↗
             </button>
           </div>
@@ -118,8 +132,16 @@ import { MovieCard } from '../ui';
         </aside>
       </div>
       @if (showShare) {
-        <section class="panel share-panel">
-          <h2>Good films are better shared.</h2>
+        <section
+          #sharePanel
+          id="share-panel"
+          class="panel share-panel"
+          aria-label="Share this film"
+        >
+          <div class="section-line">
+            <h2>Good films are better shared.</h2>
+            <button class="button subtle" (click)="toggleShare()">Close sharing</button>
+          </div>
           <form (ngSubmit)="share()">
             <label>
               A note for your friend
@@ -139,6 +161,12 @@ import { MovieCard } from '../ui';
               Anyone with this link can view the pick after signing in. Manage or revoke it in
               Shared picks.
             </p>
+            @if (localPreview) {
+              <p class="field-help">
+                Local preview: this link works on this computer. Sharing with friends on other
+                devices requires a hosted HTTPS address.
+              </p>
+            }
           }
         </section>
       }
@@ -164,6 +192,10 @@ import { MovieCard } from '../ui';
 export class DetailPage {
   api = inject(Api);
   route = inject(ActivatedRoute);
+  private injector = inject(Injector);
+  private sharePanel = viewChild<ElementRef<HTMLElement>>('sharePanel');
+  private shareTrigger = viewChild<ElementRef<HTMLButtonElement>>('shareTrigger');
+  localPreview = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   movie = signal<Movie | null>(null);
   related = signal<Movie[]>([]);
   existing = signal(false);
@@ -178,6 +210,19 @@ export class DetailPage {
   showShare = false;
   private generation = 0;
   subscription = this.route.paramMap.subscribe((p) => void this.load(p.get('id')!));
+  toggleShare() {
+    this.showShare = !this.showShare;
+    afterNextRender(
+      () => {
+        if (this.showShare) {
+          const panel = this.sharePanel()?.nativeElement;
+          panel?.scrollIntoView({ behavior: 'instant', block: 'start' });
+          panel?.querySelector('textarea')?.focus({ preventScroll: true });
+        } else this.shareTrigger()?.nativeElement.focus();
+      },
+      { injector: this.injector },
+    );
+  }
   async load(id: string) {
     const request = ++this.generation;
     this.movie.set(null);

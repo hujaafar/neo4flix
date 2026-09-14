@@ -36,14 +36,19 @@ import { EmptyState, MovieCard } from '../ui';
       </div>
     </header>
     @if (error()) {
-      <p class="error" role="alert">{{ error() }}</p>
+      <div class="error" role="alert">
+        {{ error() }}
+        @if (!loaded()) {
+          <button class="button subtle" [disabled]="loading()" (click)="load()">Try again</button>
+        }
+      </div>
     }
     @if (message()) {
       <p class="success" role="status">{{ message() }}</p>
     }
     @if (loading()) {
       <p class="loading" aria-busy="true">Opening your collection…</p>
-    } @else {
+    } @else if (loaded()) {
       @if (kind === 'watchlist') {
         <div class="movie-grid">
           @for (movie of movies(); track movie.id) {
@@ -135,6 +140,7 @@ export class CollectionsPage {
   ratings = signal<Rating[]>([]);
   shares = signal<Share[]>([]);
   loading = signal(true);
+  loaded = signal(false);
   busy = signal(false);
   error = signal('');
   message = signal('');
@@ -143,12 +149,16 @@ export class CollectionsPage {
   }
   async load() {
     this.loading.set(true);
+    this.loaded.set(false);
+    this.error.set('');
+    this.message.set('');
     try {
       if (this.kind === 'watchlist')
         this.movies.set(await this.api.request<Movie[]>('/api/users/me/watchlist'));
       else if (this.kind === 'ratings')
         this.ratings.set(await this.api.request<Rating[]>('/api/users/me/ratings'));
       else this.shares.set(await this.api.request<Share[]>('/api/recommendations/shares'));
+      this.loaded.set(true);
     } catch (e) {
       this.error.set((e as Error).message);
     } finally {

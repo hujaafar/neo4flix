@@ -21,7 +21,7 @@ Neo4flix supports **Continue with Google** alongside email/password login and au
    .\scripts\configure-google.ps1
    ```
 
-   Enter the client ID and secret at the prompts. The secret prompt is hidden; both values are saved in the ignored `.env`. On other systems, edit these two entries directly in that file:
+   Enter the **Client ID** ending in `.apps.googleusercontent.com` at the first prompt, then the **Client secret** at the second. Both prompts hide input to protect accidental secret pastes; press Enter after each. Values are saved in the ignored `.env`, preserving GitHub and other configuration. On other systems, edit these two entries directly in that file:
 
    ```dotenv
    GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
@@ -31,7 +31,7 @@ Neo4flix supports **Continue with Google** alongside email/password login and au
 4. Apply the configuration:
 
    ```powershell
-   docker compose up -d --no-deps user-service
+   docker compose up -d --no-deps --wait user-service
    ```
 
    For an unbuilt checkout, first follow the normal project startup/build. Reload the login page after the user service is healthy. The Google button is enabled only when both values are present.

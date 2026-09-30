@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Movie } from './api';
+import { moviePoster } from './posters';
 
 @Component({
   selector: 'cinema-feature',
@@ -55,6 +56,7 @@ import { Movie } from './api';
 })
 export class CinemaFeature implements AfterViewInit {
   movie = input.required<Movie>();
+  movies = input<Movie[]>([]);
   private element = inject<ElementRef<HTMLElement>>(ElementRef);
   private zone = inject(NgZone);
   private destroy = inject(DestroyRef);
@@ -74,6 +76,7 @@ export class CinemaFeature implements AfterViewInit {
         if (!this.disposed)
           this.scene = mountCinemaWorld(this.element.nativeElement.querySelector('.reel-world'), {
             target: '#film-filters',
+            posters: this.movies().map(moviePoster),
           });
       } catch {
         this.element.nativeElement.querySelector('.reel-world')?.classList.add('reel-fallback');

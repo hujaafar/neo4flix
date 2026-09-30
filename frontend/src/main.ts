@@ -22,6 +22,7 @@ const signedIn: CanActivateFn = (_, state) => {
 const admin: CanActivateFn = () =>
   inject(Api).user()?.role === 'ADMIN' ? true : inject(Router).createUrlTree(['/']);
 const routes: Routes = [
+  { path: 'credits', loadComponent: () => import('./pages/credits').then((m) => m.CreditsPage) },
   { path: 'login', loadComponent: () => import('./pages/auth').then((m) => m.AuthPage) },
   { path: 'register', loadComponent: () => import('./pages/auth').then((m) => m.AuthPage) },
   {

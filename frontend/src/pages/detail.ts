@@ -11,6 +11,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Api, ApiError, Movie, Rating, Share } from '../api';
+import { moviePoster } from '../posters';
 import { MovieCard } from '../ui';
 
 @Component({
@@ -25,8 +26,8 @@ import { MovieCard } from '../ui';
       <section class="film-detail">
         <img
           class="detail-poster"
-          [src]="'/art/' + film.artwork + '.svg'"
-          [alt]="film.title + ' illustrated artwork'"
+          [src]="poster(film)"
+          [alt]="film.title + ' poster'"
           (error)="fallback($event)"
         />
         <div class="film-copy">
@@ -37,13 +38,19 @@ import { MovieCard } from '../ui';
             <span>{{ film.runtime }} min</span>
             @if (film.ratingCount) {
               <span class="score">
-                ★ {{ film.averageRating | number: '1.1-1' }}
+                ★ {{ film.averageRating | number: '1.1-1' }} / 5
                 <small>({{ film.ratingCount }} ratings)</small>
               </span>
             } @else {
               <span>No ratings yet</span>
             }
           </div>
+          @if (film.tmdbVoteCount) {
+            <p class="field-help">
+              TMDB community: {{ film.tmdbRating | number: '1.1-1' }} / 10 ({{ film.tmdbVoteCount }}
+              votes)
+            </p>
+          }
           <p class="synopsis">{{ film.overview }}</p>
           <dl>
             <div>
@@ -190,6 +197,7 @@ import { MovieCard } from '../ui';
   `,
 })
 export class DetailPage {
+  poster = moviePoster;
   api = inject(Api);
   route = inject(ActivatedRoute);
   private injector = inject(Injector);

@@ -7,6 +7,7 @@ test.use({ trace: 'off', screenshot: 'off' });
 
 type Account = { email: string; password: string; secret?: string; counter?: number };
 const accounts: Account[] = [];
+let catalogue: any[] = [];
 
 function totp(secret: string, counter = Math.floor(Date.now() / 30000)) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -48,7 +49,14 @@ async function register(page: Page, label = 'Explorer', withValidation = false) 
     (r) => r.url().endsWith('/api/auth/register') && r.request().method() === 'POST',
   );
   await page.getByRole('button', { name: 'Create account' }).click();
-  expect((await response).status()).toBe(201);
+  const registration = await response;
+  expect(registration.status()).toBe(201);
+  const session = await registration.json();
+  catalogue = await (
+    await page.request.get('/api/movies?size=100', {
+      headers: { Authorization: 'Bearer ' + session.accessToken },
+    })
+  ).json();
   accounts.push(account);
   return account;
 }
@@ -122,14 +130,15 @@ test('share from empty collection, receive after signup, edit, copy, and revoke'
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   const owner = await register(page, 'Sharing Explorer');
+  const film = catalogue[0];
   await page.getByRole('link', { name: 'Shared picks', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Found a film for a friend?' })).toBeVisible();
   await expect(page.locator('[aria-busy=true]')).toHaveCount(0);
   await page.getByRole('link', { name: 'Discover films', exact: true }).click();
   await page.getByRole('link', { name: 'Browse films', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Search movies' }).fill('Arrival');
+  await page.getByRole('textbox', { name: 'Search movies' }).fill(film.title);
   await expect(page.locator('movie-card')).toHaveCount(1);
-  await page.getByRole('link', { name: 'View Arrival', exact: true }).click();
+  await page.getByRole('link', { name: 'View ' + film.title, exact: true }).click();
   await page.getByRole('radio', { name: '4 out of 5 stars' }).check();
   const privateNote = 'Private diary ' + randomBytes(5).toString('hex');
   await page.getByLabel(/Your notes/).fill(privateNote);
@@ -175,14 +184,14 @@ test('share from empty collection, receive after signup, edit, copy, and revoke'
     await page.getByRole('link', { name: 'Shared picks', exact: true }).click();
     await page
       .getByLabel('Your note', { exact: true })
-      .fill('Updated: Arrival is worth watching twice.');
+      .fill('Updated: This film is worth watching twice.');
     await page.getByRole('button', { name: 'Save note', exact: true }).click();
     await expect(page.getByRole('status')).toHaveText('Your note has been updated.');
     await page.getByRole('button', { name: 'Copy link', exact: true }).click();
     await expect(page.getByRole('status')).toHaveText(/Link copied|copy the address/);
     await friend.reload();
     await expect(
-      friend.getByText('Updated: Arrival is worth watching twice.', { exact: true }),
+      friend.getByText('Updated: This film is worth watching twice.', { exact: true }),
     ).toBeVisible();
     await friend.screenshot({ path: info.outputPath('recipient.png'), fullPage: true });
     await friend.getByRole('link', { name: 'Shared picks', exact: true }).click();
@@ -211,30 +220,51 @@ test('search dates and genres, edit ratings, remove watchlist, and hide or resto
   await register(page, 'Catalogue Explorer', true);
   await page.getByRole('link', { name: 'Browse films', exact: true }).click();
   const search = page.getByRole('textbox', { name: 'Search movies' });
-  await search.fill('aRrIvAl');
+  const film = catalogue[0];
+  const genre = film.genres[0];
+  await search.fill(film.title.toUpperCase());
   await expect(page.locator('movie-card')).toHaveCount(1);
-  await search.fill('Animation');
-  await expect(page.locator('movie-card')).toHaveCount(3);
-  await search.fill('2014');
-  await expect(page.locator('movie-card')).toHaveCount(3);
+  await search.fill(genre);
+  await expect(page.locator('movie-card')).toHaveCount(
+    Math.min(
+      24,
+      catalogue.filter(
+        (m) =>
+          m.genres.some((g: string) => g.toLowerCase().includes(genre.toLowerCase())) ||
+          m.title.toLowerCase().includes(genre.toLowerCase()),
+      ).length,
+    ),
+  );
+  await search.fill(String(film.year));
+  await expect(page.locator('movie-card')).toHaveCount(
+    Math.min(
+      24,
+      catalogue.filter((m) => m.year === film.year || m.title.includes(String(film.year))).length,
+    ),
+  );
   await search.fill('does-not-exist-xyz');
   await expect(page.getByRole('heading', { name: 'A different scene, perhaps?' })).toBeVisible();
   await page.getByRole('button', { name: 'Reset filters' }).click();
-  await expect(page.locator('movie-card')).toHaveCount(18);
-  await page.getByRole('button', { name: 'Science Fiction', exact: true }).click();
+  await expect(page.locator('movie-card')).toHaveCount(Math.min(24, catalogue.length));
+  await page.getByRole('button', { name: genre, exact: true }).click();
   await page.getByRole('button', { name: 'Release dates' }).click();
-  await page.getByLabel('Released from').fill('2016-01-01');
-  await page.getByLabel('Released through').fill('2016-12-31');
-  await expect(page.locator('movie-card')).toHaveCount(1);
-  await page.getByLabel('Released from').fill('2025-01-01');
+  await page.getByLabel('Released from').fill(film.year + '-01-01');
+  await page.getByLabel('Released through').fill(film.year + '-12-31');
+  await expect(page.locator('movie-card')).toHaveCount(
+    Math.min(24, catalogue.filter((m) => m.year === film.year && m.genres.includes(genre)).length),
+  );
+  await page.getByLabel('Released from').fill(film.year + 1 + '-01-01');
   await expect(page.getByRole('alert')).toBeVisible();
   await page.getByRole('button', { name: 'Clear dates' }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await search.fill('Arrival');
+  await search.fill(film.title);
   await expect(page.locator('movie-card')).toHaveCount(1);
-  await page.getByRole('link', { name: 'View Arrival', exact: true }).click();
-  await expect(page.getByText('November 11, 2016', { exact: true })).toBeVisible();
-  await expect(page.getByText('Denis Villeneuve', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'View ' + film.title, exact: true }).click();
+  const release = new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(
+    new Date(film.releaseDate),
+  );
+  await expect(page.getByText(release, { exact: true })).toBeVisible();
+  await expect(page.getByText(film.director, { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save rating', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '+ Add to watchlist', exact: true }).click();
   await expect(
@@ -255,7 +285,7 @@ test('search dates and genres, edit ratings, remove watchlist, and hide or resto
   await expect(page.locator('.review-text b')).toHaveCount(0);
   await page.getByRole('link', { name: 'Watchlist', exact: true }).click();
   await expect(page.locator('movie-card')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Remove Arrival', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove ' + film.title, exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Your next movie night starts here.' }),
   ).toBeVisible();
@@ -265,19 +295,22 @@ test('search dates and genres, edit ratings, remove watchlist, and hide or resto
   await expect(
     page.getByRole('heading', { name: 'Made for your kind of movie night.' }),
   ).toBeVisible();
-  await expect(page.getByRole('link', { name: 'View Arrival', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Animation', exact: true }).click();
-  await expect(page.locator('movie-card')).toHaveCount(3);
-  await page.getByRole('button', { name: 'Release dates' }).click();
-  await page.getByLabel('Released from').fill('2020-01-01');
-  await expect(page.locator('movie-card')).toHaveCount(1);
-  await expect(page.getByRole('link', { name: 'View Soul', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Remove Soul', exact: true }).click();
-  await expect(page.locator('movie-card')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'View ' + film.title, exact: true })).toHaveCount(0);
+  const recommendation = page.locator('movie-card').first();
+  await expect(recommendation).toBeVisible();
+  const suggestedTitle = (await recommendation.locator('h3').textContent())!.trim();
+  await recommendation
+    .getByRole('button', { name: 'Remove ' + suggestedTitle, exact: true })
+    .click();
+  await expect(page.getByRole('link', { name: 'View ' + suggestedTitle, exact: true })).toHaveCount(
+    0,
+  );
   await page.getByRole('button', { name: 'Hidden picks', exact: true }).click();
-  await expect(page.locator('.list-row')).toContainText('Soul');
+  await expect(page.locator('.list-row')).toContainText(suggestedTitle);
   await page.getByRole('button', { name: 'Show again', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'View Soul', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'View ' + suggestedTitle, exact: true }),
+  ).toBeVisible();
   await expect(page.getByText('No hidden films.', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('filtered-recommendations.png'), fullPage: true });
   await page.getByRole('link', { name: 'My ratings', exact: true }).click();

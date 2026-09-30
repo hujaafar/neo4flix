@@ -32,9 +32,19 @@ test('register, discover, rate, watchlist, share, refresh, and delete account', 
   await page.getByLabel('Your name').fill('Cinema Explorer');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(password);
+  const created = page.waitForResponse(
+    (r) => r.url().endsWith('/api/auth/register') && r.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: 'Create account' }).click();
+  const session = await (await created).json();
+  const films = await (
+    await page.request.get('/api/movies?size=100', {
+      headers: { Authorization: 'Bearer ' + session.accessToken },
+    })
+  ).json();
+  const film = films[0];
   await expect(page.getByRole('heading', { name: 'Something worth watching.' })).toBeVisible();
-  await expect(page.locator('movie-card')).toHaveCount(18);
+  await expect(page.locator('movie-card')).toHaveCount(Math.min(24, films.length));
   await expect(page.locator('.movie-grid')).toHaveCSS('display', 'grid');
   await expect(page.locator('body')).not.toHaveClass(/error/);
   // Read through the collection before photographing its one-shot entrances.
@@ -50,10 +60,10 @@ test('register, discover, rate, watchlist, share, refresh, and delete account', 
     () => document.documentElement.scrollWidth > window.innerWidth + 2,
   );
   expect(overflow).toBe(false);
-  await page.getByRole('textbox', { name: 'Search movies' }).fill('Arrival');
+  await page.getByRole('textbox', { name: 'Search movies' }).fill(film.title);
   await expect(page.locator('movie-card')).toHaveCount(1);
-  await page.getByRole('link', { name: 'View Arrival', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Arrival', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'View ' + film.title, exact: true }).click();
+  await expect(page.getByRole('heading', { name: film.title, exact: true })).toBeVisible();
   await page.getByRole('button', { name: '+ Add to watchlist', exact: true }).click();
   await expect(
     page.getByRole('button', { name: '✓ In your watchlist', exact: true }),
@@ -80,7 +90,7 @@ test('register, discover, rate, watchlist, share, refresh, and delete account', 
   await expect(
     page.getByRole('heading', { name: 'Made for your kind of movie night.' }),
   ).toBeVisible();
-  await expect(page.getByRole('link', { name: 'View Arrival', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'View ' + film.title, exact: true })).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('recommendations.png'), fullPage: true });
   await page.goto('/account');
   await expect(page.getByRole('heading', { name: 'Behind the profile.' })).toBeVisible();

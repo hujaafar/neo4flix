@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Api, Movie, Rating, Share } from '../api';
+import { moviePoster } from '../posters';
 import { EmptyState, MovieCard } from '../ui';
 
 @Component({
@@ -68,11 +69,7 @@ import { EmptyState, MovieCard } from '../ui';
         @for (r of ratings(); track r.id) {
           <article class="rating-row">
             <a [routerLink]="['/movies', r.movie.id]">
-              <img
-                [src]="'/art/' + r.movie.artwork + '.svg'"
-                [alt]="r.movie.title"
-                (error)="fallback($event)"
-              />
+              <img [src]="poster(r.movie)" [alt]="r.movie.title" (error)="fallback($event)" />
             </a>
             <div>
               <span class="eyebrow">{{ r.movie.year }} · {{ r.movie.genres[0] }}</span>
@@ -133,6 +130,7 @@ import { EmptyState, MovieCard } from '../ui';
   `,
 })
 export class CollectionsPage {
+  poster = moviePoster;
   api = inject(Api);
   route = inject(ActivatedRoute);
   kind = this.route.snapshot.routeConfig?.path;

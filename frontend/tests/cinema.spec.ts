@@ -40,7 +40,11 @@ test('cinema entrance unfolds, stays readable, and opens real film destinations'
       ({ journey, p }) => scrollTo({ top: journey.top + journey.travel * p, behavior: 'instant' }),
       { journey, p },
     );
-    await page.waitForTimeout(700);
+    await expect
+      .poll(async () => Number((await scene.getAttribute('data-sc-verify-state'))!.split(',')[3]), {
+        timeout: 15000,
+      })
+      .toBeCloseTo(p, 2);
     states.push((await scene.getAttribute('data-sc-verify-state'))!.split(',').map(Number));
     await page.screenshot({ path: info.outputPath('reel-' + p + '.png') });
   }
@@ -87,9 +91,15 @@ test('cinema entrance unfolds, stays readable, and opens real film destinations'
     await page.locator('.print-right .print-art').focus();
     await expect(page.locator('.print-right .print-art')).toBeInViewport({ ratio: 1 });
   }
-  await page.getByRole('radio', { name: 'Animation', exact: true }).check();
-  await expect(page.locator('#genre-image')).toHaveAttribute('src', '/art/spirited-away.svg');
-  await expect(page.locator('#genre-caption')).toContainText('Spirited Away');
+  const choice = page.getByRole('radio').nth(1);
+  await expect(choice).toBeEnabled();
+  const selectedGenre = (await choice.getAttribute('value'))!;
+  await choice.check();
+  await expect(page.locator('#genre-image')).toHaveAttribute(
+    'src',
+    /^(https:\/\/image\.tmdb\.org\/t\/p\/w500\/|\/art\/)/,
+  );
+  await expect(page.locator('#genre-caption')).toContainText(selectedGenre);
   await page.screenshot({ path: info.outputPath('genre.png') });
   await page.locator('#enter').scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('entrance-close.png') });
@@ -107,8 +117,10 @@ test('cinema entrance unfolds, stays readable, and opens real film destinations'
     { journey },
   );
   await page.waitForTimeout(750);
-  await page.locator('#interstellar .text-action').click();
-  await expect(page).toHaveURL(/\/login\?returnUrl=%2Fmovies%2Finterstellar/);
+  const filmLink = page.locator('.reel-copy-second .text-action');
+  const destination = (await filmLink.getAttribute('href'))!;
+  await filmLink.click();
+  await expect(page).toHaveURL(new RegExp('/login\\?returnUrl=' + encodeURIComponent(destination)));
   await expect(page.getByRole('heading', { name: 'Take your seat.' })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -158,8 +170,11 @@ test('genre selection survives registration and opens the filtered live catalogu
   let registered = false;
   try {
     await page.goto('/experience/');
-    await page.getByRole('radio', { name: 'Animation', exact: true }).check();
-    await page.getByRole('link', { name: 'Browse Animation' }).click();
+    const choice = page.getByRole('radio').nth(1);
+    await expect(choice).toBeEnabled();
+    const selectedGenre = (await choice.getAttribute('value'))!;
+    await choice.check();
+    await page.getByRole('link', { name: 'Browse ' + selectedGenre }).click();
     await expect(page.getByRole('heading', { name: 'Take your seat.' })).toBeVisible();
     await page.getByRole('link', { name: 'Create an account', exact: true }).click();
     await page.getByLabel('Your name').fill('Cinema Guest');
@@ -170,13 +185,21 @@ test('genre selection survives registration and opens the filtered live catalogu
         response.url().endsWith('/api/auth/register') && response.request().method() === 'POST',
     );
     await page.getByRole('button', { name: 'Create account' }).click();
-    registered = (await creation).ok();
+    const response = await creation;
+    registered = response.ok();
+    const session = await response.json();
+    const films = await (
+      await page.request.get('/api/movies?size=100', {
+        headers: { Authorization: 'Bearer ' + session.accessToken },
+      })
+    ).json();
     await expect(page.getByRole('heading', { name: 'Something worth watching.' })).toBeVisible();
-    await expect(page.locator('.genre-list button.selected')).toHaveText('Animation');
-    await expect(page.getByRole('link', { name: 'View Spirited Away', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'View Interstellar', exact: true })).toHaveCount(0);
+    await expect(page.locator('.genre-list button.selected')).toHaveText(selectedGenre);
+    await expect(page.locator('movie-card')).toHaveCount(
+      Math.min(24, films.filter((m: any) => m.genres.includes(selectedGenre)).length),
+    );
     await page.getByRole('button', { name: 'All films', exact: true }).click();
-    await expect(page.locator('movie-card')).toHaveCount(18);
+    await expect(page.locator('movie-card')).toHaveCount(Math.min(24, films.length));
     await page.getByRole('link', { name: 'Cinema entrance', exact: true }).click();
     await expect(page).toHaveURL(/\/experience\/$/);
     await page.getByRole('banner').getByRole('link', { name: 'Enter Neo4flix' }).click();
@@ -223,7 +246,7 @@ test('genre selection survives registration and opens the filtered live catalogu
     });
     await page.getByRole('link', { name: 'Browse films', exact: false }).click();
     await expect(page.getByRole('textbox', { name: 'Search movies' })).toBeInViewport();
-    await page.getByRole('button', { name: 'Animation', exact: true }).click();
+    await page.getByRole('button', { name: selectedGenre, exact: true }).click();
     await expect(page.locator('cinema-feature')).toHaveCount(0);
     expect(await page.evaluate(() => (window as any).__oldReel.dataset.motion)).toBe('disposed');
     const frames = await page.evaluate(() => (window as any).__oldReel.dataset.reelFrames);

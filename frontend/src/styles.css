@@ -1599,3 +1599,31 @@ textarea {
 .oauth-completion .button {
   margin-top: 14px;
 }
+
+.tmdb-logo {
+  width: 160px;
+  max-width: 100%;
+  margin-bottom: 24px;
+}
+.tmdb-panel {
+  margin-bottom: 32px;
+}
+.tmdb-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 16px;
+  margin-block: 24px;
+}
+.tmdb-preview img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.tmdb-preview figure {
+  margin: 0;
+}
+.tmdb-preview figcaption {
+  font-size: 13px;
+  margin-top: 6px;
+}

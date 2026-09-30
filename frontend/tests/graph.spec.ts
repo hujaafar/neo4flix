@@ -31,7 +31,13 @@ test('administrator inspects real mapped ratings without private profile data', 
         });
         if (registration.status !== 201) return { status: registration.status, id: '', rated: 0 };
         const data = await registration.json();
-        const rating = await fetch('/api/ratings/me/inception', {
+        const films = await (
+          await fetch('/api/movies?size=100', {
+            headers: { Authorization: 'Bearer ' + data.accessToken },
+          })
+        ).json();
+        const film = films[0];
+        const rating = await fetch('/api/ratings/me/' + film.id, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -40,7 +46,12 @@ test('administrator inspects real mapped ratings without private profile data', 
           body: JSON.stringify({ score: 4, review: 'Private graph-test review' }),
         });
         await fetch('/api/auth/logout', { method: 'POST' });
-        return { status: registration.status, id: data.user.id, rated: rating.status };
+        return {
+          status: registration.status,
+          id: data.user.id,
+          rated: rating.status,
+          title: film.title,
+        };
       },
       { email, password },
     );
@@ -66,7 +77,7 @@ test('administrator inspects real mapped ratings without private profile data', 
       .getByRole('button', { name: 'User: Viewer ' + fixture.id.slice(0, 6), exact: true })
       .click();
     await expect(page.getByRole('cell', { name: 'RATED', exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Inception', exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: fixture.title, exact: true })).toBeVisible();
     await expect(page.getByRole('cell', { name: '4', exact: true })).toBeVisible();
     await expect(page.locator('main')).not.toContainText('Private graph-test review');
     await expect(page.locator('main')).not.toContainText(email);

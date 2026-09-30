@@ -10,7 +10,7 @@ const ease = (t) => {
 const range = (p, a, b) => ease((p - a) / (b - a));
 
 /** Shared 3D scene. Motion stays on while visible; skipping and graphics fallback remain available. */
-export function mountCinemaWorld(host, { target = '#collection' } = {}) {
+export function mountCinemaWorld(host, { target = '#collection', posters = [] } = {}) {
   const stage = host.querySelector('.reel-stage');
   const surface = host.querySelector('.reel-surface');
   const skipButton = host.querySelector('[data-reel-skip]');
@@ -189,16 +189,6 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
   filmTexture.colorSpace = THREE.SRGBColorSpace;
   filmTexture.wrapS = THREE.RepeatWrapping;
   filmTexture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
-  const art = [
-    'interstellar',
-    'arrival',
-    'dune',
-    'blade-runner',
-    'moonlight',
-    'inception',
-    'parasite',
-    'spirited-away',
-  ];
   function paintFilm() {
     ctx.clearRect(0, 0, 4096, 512);
     ctx.fillStyle = '#101712';
@@ -215,7 +205,14 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
         img = images[i % images.length];
       ctx.fillStyle = ['#31483f', '#716042', '#22383d'][i % 3];
       ctx.fillRect(x, 76, 308, 360);
-      if (img?.complete && img.naturalWidth) ctx.drawImage(img, 0, 80, 400, 435, x, 76, 308, 360);
+      if (img?.complete && img.naturalWidth) {
+        const aspect = 308 / 360,
+          iw = img.naturalWidth,
+          ih = img.naturalHeight;
+        const sw = Math.min(iw, ih * aspect),
+          sh = Math.min(ih, iw / aspect);
+        ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, 76, 308, 360);
+      }
       ctx.strokeStyle = '#899779';
       ctx.lineWidth = 2;
       ctx.strokeRect(x, 76, 308, 360);
@@ -223,17 +220,33 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
     filmTexture.needsUpdate = true;
   }
   paintFilm();
-  for (const id of art) {
-    const img = new Image();
-    images.push(img);
-    img.onload = () => {
-      if (!disposed) {
-        paintFilm();
-        wake();
-      }
-    };
-    img.src = '/art/' + id + '.svg';
+  function setPosters(urls) {
+    if (disposed) return;
+    for (const img of images) img.onload = null;
+    images.length = 0;
+    for (const url of urls.slice(0, 12)) {
+      // No arbitrary external origins can enter the WebGL texture.
+      if (
+        !/^https:\/\/image\.tmdb\.org\/t\/p\/w500\/[A-Za-z0-9_-]{1,100}\.(jpg|png|webp)$/.test(
+          url,
+        ) &&
+        !/^\/art\/[a-z-]{1,50}\.svg$/.test(url)
+      )
+        continue;
+      const img = new Image();
+      images.push(img);
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        if (!disposed) {
+          paintFilm();
+          wake();
+        }
+      };
+      img.src = url;
+    }
+    paintFilm();
   }
+  setPosters(posters);
   const filmCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(-6, -1.5, -0.3),
     new THREE.Vector3(-3.7, -1.8, 1.4),
@@ -452,6 +465,7 @@ export function mountCinemaWorld(host, { target = '#collection' } = {}) {
   mode();
   measure();
   return {
+    setPosters,
     destroy() {
       if (disposed) return;
       disposed = true;

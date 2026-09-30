@@ -20,7 +20,7 @@ import { CinemaFeature } from '../feature';
     </div>
 
     @if (!personal && !q && !genre && page === 0 && !from && !to && featured()) {
-      <cinema-feature [movie]="featured()!" />
+      <cinema-feature [movies]="movies()" [movie]="featured()!" />
     }
     <header class="page-heading">
       <div>
@@ -210,8 +210,7 @@ export class BrowsePage {
       );
       if (id !== this.generation) return;
       this.movies.set(rows);
-      if (!this.personal && !this.q)
-        this.featured.set(rows.find((m) => m.id === 'interstellar') || null);
+      if (!this.personal && !this.q) this.featured.set(rows[0] || null);
     } catch (e) {
       if (id === this.generation) this.error.set((e as Error).message);
     } finally {

@@ -19,6 +19,12 @@ export interface Movie {
   director: string;
   overview: string;
   artwork: string;
+  tmdbId?: number;
+  source?: string;
+  posterPath?: string;
+  backdropPath?: string;
+  tmdbRating?: number;
+  tmdbVoteCount?: number;
   averageRating?: number;
   ratingCount?: number;
   reason?: string;

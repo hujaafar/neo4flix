@@ -53,7 +53,11 @@ import { Api } from './api';
           }
         </nav>
         <div class="sidebar-bottom">
-          <p class="small-note">Good films. Better connections.</p>
+          <p class="small-note">
+            Good films. Better connections.
+            <br />
+            <a routerLink="/credits">Movie data & credits</a>
+          </p>
           <a
             routerLink="/account"
             class="profile-link"

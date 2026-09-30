@@ -2,6 +2,7 @@ import { Component, input, output } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Movie } from './api';
+import { moviePoster } from './posters';
 import { FilmReveal } from './motion';
 
 @Component({
@@ -16,8 +17,8 @@ import { FilmReveal } from './motion';
         [attr.aria-label]="'View ' + movie().title"
       >
         <img
-          [src]="'/art/' + movie().artwork + '.svg'"
-          [alt]="movie().title + ' illustrated artwork'"
+          [src]="poster(movie())"
+          [alt]="movie().title + ' poster'"
           loading="lazy"
           (error)="fallback($event)"
         />
@@ -52,6 +53,7 @@ import { FilmReveal } from './motion';
   `,
 })
 export class MovieCard {
+  poster = moviePoster;
   movie = input.required<Movie>();
   removable = input(false);
   remove = output<Movie>();

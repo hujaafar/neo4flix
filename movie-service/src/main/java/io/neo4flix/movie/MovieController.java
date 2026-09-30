@@ -155,6 +155,11 @@ public class MovieController {
     @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable String id) {
         graph.write(tx -> {
+            tx.run("MERGE (s:Seed {id:'catalog-v1'}) SET s.lock=coalesce(s.lock,0)+1").consume();
+            tx.run(
+                "MATCH (s:Share)-[:RECOMMENDS]->(:Movie {id:$id}) DETACH DELETE s",
+                Map.of("id", id)
+            ).consume();
             var r = tx
                 .run(
                     "MATCH (m:Movie {id:$id}) DETACH DELETE m RETURN count(m) AS n",

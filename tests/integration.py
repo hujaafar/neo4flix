@@ -166,18 +166,26 @@ try:
         "passwordHash" not in me and "totpSecret" not in me,
         "Profile response exposes no authentication secrets",
     )
-    movies, _ = alice.request("/api/movies")
-    check(len(movies) >= 18, "Seeded catalogue is available")
-    films, _ = alice.request("/api/movies?q=INTERSTELLAR")
-    check(len(films) == 1 and films[0]["id"] == "interstellar", "Title search is case insensitive")
-    films, _ = alice.request("/api/movies?q=1999")
-    check(any(m["id"] == "matrix" for m in films), "Search supports release year")
-    films, _ = alice.request("/api/movies?genre=Animation&from=2000-01-01&to=2021-01-01")
+    movies, _ = alice.request("/api/movies?size=100")
+    check(len(movies) >= 4, "Live catalogue is available")
+    liked, second, candidate, watched = [m["id"] for m in movies[:4]]
+    selected = movies[0]
+    films, _ = alice.request("/api/movies?q=" + quote(selected["title"].upper()))
+    check(any(m["id"] == liked for m in films), "Title search is case insensitive")
+    films, _ = alice.request("/api/movies?q=" + str(selected["year"]))
     check(
-        all("Animation" in m["genres"] and 2000 <= m["year"] <= 2021 for m in films)
-        and len(films) > 0,
+        any(m["id"] == liked for m in films) and all(m["year"] == selected["year"] for m in films),
+        "Search supports release year",
+    )
+    genre, year = selected["genres"][0], selected["year"]
+    films, _ = alice.request(f"/api/movies?genre={quote(genre)}&from={year}-01-01&to={year}-12-31")
+    check(
+        all(genre in m["genres"] and m["year"] == year for m in films) and len(films) > 0,
         "Genre and release-date filters compose",
     )
+    alice.request("/api/movies/tmdb/status", expected=403)
+    alice.request("/api/movies/tmdb/imports", "POST", {"selection": "popular", "count": 1}, 403)
+    check(True, "TMDB configuration and import require an administrator")
     alice.request("/api/movies?size=101", expected=400)
     alice.request("/api/movies?from=2025-01-01&to=2000-01-01", expected=400)
     check(True, "Invalid pagination and inverted date ranges are rejected")
@@ -202,15 +210,15 @@ try:
     token_parts[1] = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
     alice.request("/api/users/me", token=".".join(token_parts), expected=401)
     check(True, "Tampered JWT role is rejected")
-    alice.request("/api/ratings/me/interstellar", "PUT", {"score": 6}, 400)
+    alice.request("/api/ratings/me/" + candidate, "PUT", {"score": 6}, 400)
     alice.request("/api/ratings/me/missing", "PUT", {"score": 4}, 404)
     check(True, "Ratings enforce range and movie existence")
     alice.request(
-        "/api/ratings/me/inception", "POST", {"score": 5, "review": "A maze worth revisiting."}
+        "/api/ratings/me/" + liked, "POST", {"score": 5, "review": "A maze worth revisiting."}
     )
     check(True, "Rating create works")
-    alice.request("/api/ratings/me/inception", "PUT", {"score": 4, "review": "Updated note"})
-    rating, _ = alice.request("/api/ratings/me/inception")
+    alice.request("/api/ratings/me/" + liked, "PUT", {"score": 4, "review": "Updated note"})
+    rating, _ = alice.request("/api/ratings/me/" + liked)
     check(
         rating["score"] == 4
         and rating["review"] == "Updated note"
@@ -222,37 +230,37 @@ try:
     def concurrent_rating(_):
         c = Client()
         c.token = alice.token
-        c.request("/api/ratings/me/matrix", "PUT", {"score": 5})
+        c.request("/api/ratings/me/" + second, "PUT", {"score": 5})
         return True
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
         list(pool.map(concurrent_rating, range(5)))
     history, _ = alice.request("/api/users/me/ratings")
     check(
-        sum(r["movie"]["id"] == "matrix" for r in history) == 1,
+        sum(r["movie"]["id"] == second for r in history) == 1,
         "Concurrent rating upserts create one relationship; REST history delegation works",
     )
     bob = Client()
     users.append(bob)
     bob.register("bob")
-    bob.request("/api/ratings/me/inception", expected=404)
+    bob.request("/api/ratings/me/" + liked, expected=404)
     check(True, "Another account cannot read a private rating")
-    bob.request("/api/ratings/me/inception", "PUT", {"score": 5})
-    bob.request("/api/ratings/me/interstellar", "PUT", {"score": 5})
+    bob.request("/api/ratings/me/" + liked, "PUT", {"score": 5})
+    bob.request("/api/ratings/me/" + candidate, "PUT", {"score": 5})
     recs, _ = alice.request("/api/recommendations")
     ids = [r["id"] for r in recs]
     check(
-        "inception" not in ids and "matrix" not in ids,
+        liked not in ids and second not in ids,
         "Recommendations exclude movies already rated",
     )
-    interstellar = next(r for r in recs if r["id"] == "interstellar")
+    suggestion = next(r for r in recs if r["id"] == candidate)
     check(
-        interstellar["reason"] == "Loved by viewers with similar taste",
+        suggestion["reason"] == "Loved by viewers with similar taste",
         "Collaborative graph traversal uses overlapping likes",
     )
     check(
-        interstellar["algorithm"] == "gds.similarity.jaccard"
-        and abs(interstellar["collaborativeScore"] - 1 / 3) < 1e-9,
+        suggestion["algorithm"] == "gds.similarity.jaccard"
+        and abs(suggestion["collaborativeScore"] - 1 / 3) < 1e-9,
         "Real GDS Jaccard similarity weights the overlapping-like fixture correctly",
     )
     alice.request("/api/movies/graph", expected=403)
@@ -264,25 +272,27 @@ try:
         ),
         "Recommendations are ranked by descending score",
     )
-    recs, _ = alice.request("/api/recommendations?genre=Science%20Fiction&from=2010-01-01")
+    recs, _ = alice.request(
+        "/api/recommendations?genre=" + quote(genre) + "&from=" + str(year) + "-01-01"
+    )
     check(
-        all("Science Fiction" in m["genres"] and m["year"] >= 2010 for m in recs),
+        all(genre in m["genres"] and m["year"] >= year for m in recs),
         "Recommendations honor genre and release filters",
     )
-    alice.request("/api/recommendations/dismissed/interstellar", "POST", expected=204)
+    alice.request("/api/recommendations/dismissed/" + candidate, "POST", expected=204)
     recs, _ = alice.request("/api/recommendations")
-    check("interstellar" not in [r["id"] for r in recs], "Dismissed picks disappear")
+    check(candidate not in [r["id"] for r in recs], "Dismissed picks disappear")
     hidden, _ = alice.request("/api/recommendations/dismissed")
-    check(any(m["id"] == "interstellar" for m in hidden), "Dismissed picks can be read")
-    alice.request("/api/recommendations/dismissed/interstellar", "PUT", expected=204)
-    alice.request("/api/recommendations/dismissed/interstellar", "DELETE", expected=204)
+    check(any(m["id"] == candidate for m in hidden), "Dismissed picks can be read")
+    alice.request("/api/recommendations/dismissed/" + candidate, "PUT", expected=204)
+    alice.request("/api/recommendations/dismissed/" + candidate, "DELETE", expected=204)
     proxy, _ = alice.request("/api/movies/recommendations")
     check(
-        any(m["id"] == "interstellar" for m in proxy),
+        any(m["id"] == candidate for m in proxy),
         "Movie service delegates recommendations over REST; restore works",
     )
-    alice.request("/api/users/me/watchlist/arrival", "POST", expected=204)
-    alice.request("/api/users/me/watchlist/arrival", "PUT", {"note": "Friday evening"}, 204)
+    alice.request("/api/users/me/watchlist/" + watched, "POST", expected=204)
+    alice.request("/api/users/me/watchlist/" + watched, "PUT", {"note": "Friday evening"}, 204)
     watch, _ = alice.request("/api/users/me/watchlist")
     check(
         len(watch) == 1 and watch[0]["watchlistNote"] == "Friday evening",
@@ -290,19 +300,19 @@ try:
     )
     bwatch, _ = bob.request("/api/users/me/watchlist")
     check(bwatch == [], "Watchlists are private to their owner")
-    alice.request("/api/users/me/watchlist/arrival", "DELETE", expected=204)
+    alice.request("/api/users/me/watchlist/" + watched, "DELETE", expected=204)
     watch, _ = alice.request("/api/users/me/watchlist")
     check(watch == [], "Watchlist delete works")
     share, _ = alice.request(
         "/api/recommendations/shares",
         "POST",
-        {"movieId": "arrival", "note": "For your next evening."},
+        {"movieId": watched, "note": "For your next evening."},
         201,
     )
     sid = share["id"]
     received, _ = bob.request("/api/recommendations/shares/" + sid)
     check(
-        received["movie"]["id"] == "arrival" and "email" not in received,
+        received["movie"]["id"] == watched and "email" not in received,
         "A friend can read a shared pick without private profile data",
     )
     bob.request("/api/recommendations/shares/" + sid, "PUT", {"note": "Hijacked"}, 404)
@@ -314,8 +324,8 @@ try:
     alice.request("/api/recommendations/shares/" + sid, "DELETE", expected=204)
     bob.request("/api/recommendations/shares/" + sid, expected=404)
     check(True, "Revoked shares are no longer accessible")
-    alice.request("/api/ratings/me/matrix", "DELETE", expected=204)
-    alice.request("/api/ratings/me/matrix", expected=404)
+    alice.request("/api/ratings/me/" + second, "DELETE", expected=204)
+    alice.request("/api/ratings/me/" + second, expected=404)
     check(True, "Rating delete works")
     alice.request("/api/users/me", "PATCH", {"name": "Updated Alice"})
     profile, _ = alice.request("/api/users/me")
@@ -407,7 +417,7 @@ try:
         admin.login()
         created, _ = admin.request("/api/movies", "POST", movie_input, 201)
         created_movie = created["id"]
-        updated = {**movie_input, "title": "Updated Integration Film", "genres": ["Animation"]}
+        updated = {**movie_input, "title": "!! Updated Integration Film", "genres": ["Animation"]}
         admin.request("/api/movies/" + created_movie, "PUT", updated)
         film, _ = alice.request("/api/movies/" + created_movie)
         check(film["title"] == updated["title"], "Administrator can create and update movies")

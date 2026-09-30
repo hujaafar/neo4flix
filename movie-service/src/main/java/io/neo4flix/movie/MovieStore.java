@@ -24,6 +24,10 @@ public class MovieStore {
 
     public void save(String id, MovieController.MovieInput input, boolean update) {
         ogm.write(session -> {
+            session.query(
+                "MERGE (s:Seed {id:'catalog-v1'}) SET s.lock=coalesce(s.lock,0)+1 RETURN s.id",
+                Map.of()
+            );
             if (update) {
                 // Serialize concurrent edits before loading OGM's snapshot of the genre relationships.
                 var rows = session.query(

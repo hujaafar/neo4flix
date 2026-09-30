@@ -53,26 +53,25 @@ public class RecommendationController {
                   WITH peer,likedIds,collect(DISTINCT id(seen)) AS peerLikedIds
                   WITH peer,CASE WHEN peer IS NULL THEN 0.0
                     ELSE gds.similarity.jaccard(likedIds,peerLikedIds) END AS similarity
-                  RETURN collect(CASE WHEN peer IS NULL THEN null
-                    ELSE {user:peer,similarity:similarity} END) AS peers
+                  OPTIONAL MATCH (peer)-[c:RATED]->(suggestion:Movie) WHERE c.score>=4
+                  WITH suggestion,sum(similarity) AS strength,count(peer) AS neighbors
+                  RETURN collect(CASE WHEN suggestion IS NULL THEN null
+                    ELSE {id:suggestion.id,strength:strength,neighbors:neighbors} END) AS collaborativePicks
+                }
+                CALL { WITH u
+                  OPTIONAL MATCH (u)-[liked:RATED]->(:Movie)-[:IN_GENRE]->(g:Genre)
+                  WHERE liked.score>=4 RETURN collect(DISTINCT g.name) AS preferredGenres
                 }
                 MATCH (m:Movie)
                 WHERE NOT (u)-[:RATED]->(m) AND NOT (u)-[:DISMISSED]->(m)
                   AND ($genre='' OR $genre IN m.genres)
                   AND ($from IS NULL OR m.releaseDate >= $from) AND ($to IS NULL OR m.releaseDate <= $to)
-                CALL { WITH peers,m
-                  UNWIND peers AS neighbor
-                  WITH neighbor.user AS peer,neighbor.similarity AS similarity,m
-                  MATCH (peer)-[c:RATED]->(m) WHERE c.score>=4
-                  RETURN coalesce(sum(similarity),0.0) AS collaborative,count(peer) AS neighbors
-                }
-                CALL { WITH u,m
-                  OPTIONAL MATCH (u)-[liked:RATED]->(:Movie)-[:IN_GENRE]->(g:Genre)<-[:IN_GENRE]-(m)
-                  WHERE liked.score>=4 RETURN count(DISTINCT g) AS affinity
-                }
-                CALL { WITH m OPTIONAL MATCH (:User)-[r:RATED]->(m)
-                  RETURN coalesce(avg(r.score),0.0) AS averageRating,count(r) AS ratingCount
-                }
+                OPTIONAL MATCH (:User)-[r:RATED]->(m)
+                WITH m,preferredGenres,collaborativePicks,coalesce(avg(r.score),0.0) AS averageRating,count(r) AS ratingCount
+                WITH m,averageRating,ratingCount,size([g IN m.genres WHERE g IN preferredGenres]) AS affinity,
+                  head([pick IN collaborativePicks WHERE pick.id=m.id]) AS contribution
+                WITH m,averageRating,ratingCount,affinity,coalesce(contribution.strength,0.0) AS collaborative,
+                  coalesce(contribution.neighbors,0) AS neighbors
                 WITH m,neighbors,collaborative,affinity,averageRating,ratingCount,
                   (collaborative*3.0 + affinity*1.5 + (averageRating*ratingCount + 3.0*5)/(ratingCount+5.0)) AS score
                 RETURN m{.*,averageRating:averageRating,ratingCount:ratingCount,

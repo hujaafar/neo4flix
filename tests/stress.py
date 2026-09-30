@@ -35,9 +35,10 @@ def main():
     account_password = "AuditLoad!7" + secrets.token_hex(12)
     account_email = "audit-load-" + secrets.token_hex(10) + "@example.test"
     token = ""
+    movie_id = ""
     report = {
         "executedAtUtc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "scope": "One account, seed catalogue, 25% rating upserts; 4/8/16 workers. No capacity or endurance claim.",
+        "scope": "One account, live catalogue, 25% rating upserts; 4/8/16 workers. No capacity or endurance claim.",
         "stages": [],
         "cleanup": "not created",
     }
@@ -79,24 +80,24 @@ def main():
         method, path, body = [
             ("GET", "/api/movies", None),
             ("GET", "/api/recommendations", None),
-            ("GET", "/api/movies/inception", None),
+            ("GET", "/api/movies/" + movie_id, None),
             (
                 "PUT",
-                "/api/ratings/me/inception",
+                "/api/ratings/me/" + movie_id,
                 {"score": 5, "review": "Disposable audit load fixture"},
             ),
         ][choice]
         try:
             status, data, elapsed = request(method, path, body)
             valid = status == 200 and (
-                (choice == 0 and isinstance(data, list) and len(data) >= 18)
+                (choice == 0 and isinstance(data, list) and len(data) >= 4)
                 or (
                     choice == 1
                     and isinstance(data, list)
                     and len(data) > 0
-                    and all(m["id"] != "inception" for m in data)
+                    and all(m["id"] != movie_id for m in data)
                 )
-                or (choice == 2 and isinstance(data, dict) and data.get("id") == "inception")
+                or (choice == 2 and isinstance(data, dict) and data.get("id") == movie_id)
                 or (choice == 3 and isinstance(data, dict) and data.get("score") == 5)
             )
             return status, elapsed, valid
@@ -112,8 +113,12 @@ def main():
         if status != 201:
             raise RuntimeError(f"Registration failed with status {status}; no load started")
         token = session["accessToken"]
+        status, films, _ = request("GET", "/api/movies")
+        if status != 200 or len(films) < 4:
+            raise RuntimeError("A live catalogue with at least four films is required")
+        movie_id = films[0]["id"]
         report["cleanup"] = "pending"
-        status, _, _ = request("PUT", "/api/ratings/me/inception", {"score": 5})
+        status, _, _ = request("PUT", "/api/ratings/me/" + movie_id, {"score": 5})
         if status != 200:
             raise RuntimeError(f"Fixture creation failed with status {status}")
         for workers, count in [(4, 100), (8, 200), (16, 400)]:
@@ -148,7 +153,7 @@ def main():
                 break
         status, history, _ = request("GET", "/api/ratings/me")
         report["ratingUniquenessPassed"] = (
-            status == 200 and sum(r["movie"]["id"] == "inception" for r in history) == 1
+            status == 200 and sum(r["movie"]["id"] == movie_id for r in history) == 1
         )
     finally:
         if token:

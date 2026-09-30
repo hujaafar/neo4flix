@@ -1,0 +1,16 @@
+# Optional development profile for a small catalogue on memory-constrained laptops.
+# docker compose -f compose.yaml -f compose.low-memory.yaml up -d --wait
+services:
+  neo4j:
+    mem_limit: 1400m
+    environment:
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 128m
+  movie-service:
+    mem_limit: 384m
+  user-service:
+    mem_limit: 384m
+  rating-service:
+    mem_limit: 384m
+  recommendation-service:
+    mem_limit: 384m

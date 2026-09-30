@@ -26,6 +26,14 @@ public class MovieSeed {
                 "CREATE CONSTRAINT seed_id IF NOT EXISTS FOR (s:Seed) REQUIRE s.id IS UNIQUE",
                 Map.of()
             );
+            graph.execute(
+                "CREATE CONSTRAINT movie_tmdb_id IF NOT EXISTS FOR (m:Movie) REQUIRE m.tmdbId IS UNIQUE",
+                Map.of()
+            );
+            graph.execute(
+                "CREATE CONSTRAINT catalog_backup_id IF NOT EXISTS FOR (b:CatalogBackup) REQUIRE b.id IS UNIQUE",
+                Map.of()
+            );
             List<Map<String, Object>> movies = new ArrayList<>();
             try (
                 var reader = new BufferedReader(

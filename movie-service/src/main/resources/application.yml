@@ -21,6 +21,7 @@ management:
     health:
       show-details: never
 app:
+  tmdb-token: ${TMDB_READ_ACCESS_TOKEN:}
   jwt-public-key: ${JWT_PUBLIC_KEY:/run/secrets/jwt-public.pem}
   jwt-private-key: ${JWT_PRIVATE_KEY:/run/secrets/jwt-private.pem}
   encryption-key: ${ENCRYPTION_KEY:}

@@ -93,6 +93,14 @@ services:
   movie-service:
     <<: *api
     build: { context: ., args: { SERVICE: movie-service } }
+    networks: [backend, oauth]
+    environment:
+      <<: *env
+      TMDB_READ_ACCESS_TOKEN: ${TMDB_READ_ACCESS_TOKEN:-}
+      JAVA_TOOL_OPTIONS: '-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError ${OAUTH_JAVA_OPTIONS:-}'
+    volumes:
+      - ./secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
+      - ./secrets/oauth:/run/oauth:ro
   user-service:
     <<: *api
     # OAuth token and signing-key requests need outbound HTTPS; no service port is published.

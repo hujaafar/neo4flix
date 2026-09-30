@@ -109,3 +109,20 @@ Recommendation filters: canonical `genre`, inclusive `from`/`to`, and `limit` (d
 ## Health
 
 Every Spring Boot service exposes `/actuator/health` inside the private network, without details. It is not routed through the public gateway. The container probe checks the endpoint and Neo4j connectivity before the frontend starts.
+
+
+## TMDB catalogue import
+
+All `/api/movies/tmdb/**` endpoints require an administrator JWT. The token stays server-side.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/movies/tmdb/status` | Returns `{configured: true/false}`, never the token |
+| POST | `/api/movies/tmdb/imports` | Stage a preview using `{selection: "popular" or "top_rated", count: 1..50}`; returns HTTP 202 |
+| GET | `/api/movies/tmdb/imports/{id}` | Poll `FETCHING`, `READY`, `FAILED`, or `APPLIED`; jobs belong to their creator and expire after 30 minutes |
+| POST | `/api/movies/tmdb/imports/{id}/replace` | Apply only a complete READY preview, atomically back up and replace the catalogue |
+| GET | `/api/catalogue/featured` | Public, bounded movie metadata for the cinema entrance; excludes personal data |
+
+TMDB films include `source`, `tmdbId`, `posterPath`, `backdropPath`, `tmdbRating` (0–10), and `tmdbVoteCount`. `averageRating` and `ratingCount` remain actual Neo4flix user ratings (1–5). No provider ratings are written as user interactions. Poster paths are validated and use only `https://image.tmdb.org/t/p/w500`.
+
+Missing configuration returns 503; invalid selection/count returns 400; unavailable, invalid or rejected provider data returns a sanitized 502/503. Failed or incomplete fetches never replace data. Concurrent fetches and replayed replacement return 409. Movie-related ratings, watchlist entries, hidden picks and shares are reset on replacement. Profiles and authentication are retained.

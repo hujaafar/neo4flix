@@ -11,7 +11,9 @@ graph LR
   S -->|RECOMMENDS| M
 ```
 
-Unique constraints cover user ID, normalized user email, movie ID, genre name, refresh-token hash, share ID, and the seed marker ID. Movie metadata stores a denormalized `genres` array for fast API projection; catalogue writes update that array and `IN_GENRE` relationships in one transaction. Seed data runs once per persistent graph, under a graph write lock.
+Unique constraints cover user ID, normalized user email, movie ID, optional TMDB ID, genre name, refresh-token hash, share ID, catalogue-backup ID and the seed marker ID. Movie metadata stores a denormalized `genres` array for fast API projection; catalogue writes update that array and `IN_GENRE` relationships in one transaction. Seed data runs once per persistent graph, under a graph write lock. Movie CRUD and catalogue replacement acquire the same marker lock to serialize catalogue writes. Removing a movie also removes its share nodes.
+
+TMDB fetching runs in a single bounded background worker before any database changes. An administrator-owned preview contains complete film details and credits. Applying it snapshots the old catalogue into a private `CatalogBackup` node, removes the old movie interactions and shares, and writes the replacement in one transaction. Accounts and authentication properties are not changed. The movie service alone holds the provider token; public entrance metadata contains movie fields only. See [TMDB setup and backup details](tmdb.md).
 
 ## Ownership
 
@@ -28,7 +30,7 @@ This shared graph makes the learning objectives explicit and keeps recommendatio
 Candidates exclude movies already rated or explicitly hidden by the requesting user. Filters apply before ranking.
 
 1. **Collaborative signal:** traverse from the user to films they rated at least 4, to peers who also rated those films at least 4, and then to candidates those peers rated at least 4. For each distinct peer, Neo4j GDS `gds.similarity.jaccard` compares the two sets of liked movie IDs. Sum those similarities for peers who like the candidate, so closer taste contributes more and several shared paths do not multiply one peer's vote.
-2. **Genre signal:** traverse liked films through Genre nodes to candidates, counting distinct shared genres.
+2. **Genre signal:** collect distinct genres from liked films through Genre nodes, then count each candidate's overlap with that set.
 3. **Prior-weighted audience average:** blend observed ratings with five prior observations at score 3. This gives new users and unrated movies a deterministic starting point without inventing audience ratings.
 
 ```text
@@ -39,9 +41,9 @@ score = 3 × sum_of_contributing_peers_jaccard_similarities
 
 Sort by score descending, breaking ties by movie title. Explanations prioritize the collaborative signal, then genre affinity, then discovery. The numeric score is an internal ranking measure, not a probability, match percentage, or predicted star rating. Personal preferences arise from ratings; the application does not fabricate activity for a new account.
 
-The concrete Cypher lives in `RecommendationController.java`; it uses parameterized values and distinct aggregates in subqueries to avoid multiplying rating counts through joined paths. Movie details compute actual averages from the current `RATED` relationships. Related films use genre overlap and audience average.
+The concrete Cypher lives in `RecommendationController.java`; it uses parameterized values and distinct aggregates in subqueries to avoid multiplying rating counts through joined paths. Liked sets, peer similarities, collaborative picks and preferred genres are computed once per request before candidate ranking. Movie details compute actual averages from the current `RATED` relationships. Related films use genre overlap and audience average. Imported TMDB community scores are displayed separately out of 10 and do not substitute for local ratings out of 5.
 
-For example, Alice likes `{Inception, The Matrix}` and Bob likes `{Inception, Interstellar}`. Their intersection has one film and their union has three, so GDS returns `1/3`. Bob contributes `1/3` to Interstellar's collaborative score. The API integration test checks this exact result. Cold-start users have no peers and receive the audience prior. This uses the GDS similarity function directly on catalogue sets; it does not create a named graph projection on every request.
+For example, Alice likes `{A, B}` and Bob likes `{A, C}`. Their intersection has one film and their union has three, so GDS returns `1/3`. Bob contributes `1/3` to C's collaborative score. The API integration test chooses films from the current catalogue and checks this exact result. Cold-start users have no peers and receive the audience prior. This uses the GDS similarity function directly on catalogue sets; it does not create a named graph projection on every request.
 
 ## Object graph mapping
 

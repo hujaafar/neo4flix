@@ -1,5 +1,37 @@
 # Validation report
 
+## Real TMDB catalogue — 30 September 2026
+
+The local deployment at `https://localhost:9443` now contains **50 real films and 50 TMDB poster paths**, replacing the 18-film starter collection. Titles, release dates, genres, synopses, directors, runtime and community scores were fetched through the running movie service using verified outbound HTTPS. A complete preview was checked before the atomic replacement. Reapplying the same job returned 409, old movie IDs returned 404, mapped detail fields survived readback, and public entrance metadata used the imported catalogue.
+
+The replacement preserved existing accounts and authentication settings. Old movie ratings, watchlists, hidden picks and shares were reset intentionally. Before replacement, an offline copy of the stopped database's `/data` directory was saved privately; the import also stored the old catalogue and related relationships in a private `CatalogBackup` node. A restore drill was not performed.
+
+| Check | Result |
+| --- | --- |
+| Native Maven verify | 48 unit/protocol tests passed, none failed or skipped; all four services packaged |
+| TMDB provider and staging tests | Nine new tests cover Bearer requests, metadata validation, duplicates/adult filtering, incomplete fetches, provider failures, rate limits, redirects, owner binding, concurrent staging and replay rejection |
+| Production Angular build and runtime packaging | Passed; deployed into the normal nginx and Java runtime images |
+| Live HTTPS API suite | 59/59 assertions passed in 190.41 seconds with certificate and hostname verification |
+| Bounded stress test | 700/700 responses and content checks passed; concurrent rating uniqueness and disposable-account cleanup passed |
+| Full desktop/mobile browser suite | 40/40 scenarios passed in 265.59 seconds; no failures, skips or flaky results; normal HTTPS certificate verification |
+| Additional live TMDB UI review | Real public posters and credit logo loaded; admin preview fetched two films without replacing the 50-film catalogue; mobile import layout had no horizontal overflow; animated Discover and detail poster/community score passed with no page errors |
+| Windows configuration helper | Isolated token replacement, preservation of other settings and invalid-input rejection passed; live settings were not changed by this check |
+| Formatting | Prettier and Ruff format checks passed |
+
+| Concurrent workers | Requests | p50 | p95 | Maximum | Failed checks |
+| --- | --- | --- | --- | --- | --- |
+| 4 | 100 | 48.3 ms | 67.0 ms | 79.0 ms | 0 |
+| 8 | 200 | 56.7 ms | 85.3 ms | 1405.2 ms | 0 |
+| 16 | 400 | 70.2 ms | 265.0 ms | 470.8 ms | 0 |
+
+The stress harness used direct IPv4 loopback while still validating the `localhost` TLS hostname. It mixed catalogue, recommendations, details and rating updates equally against the imported collection. This short one-account test does not establish production capacity or endurance.
+
+Initial live checks exposed a reproducible recommendation timeout with the larger catalogue. The query now computes liked sets, peer similarities and preferred genres once per request before ranking candidates. The final API suite verified exact GDS Jaccard similarity of 1/3, ranking, filters and exclusions; the bounded load test passed afterward. An earlier browser run also found Discover's feature tied to an obsolete starter-film ID. It now uses the current catalogue, retaining the animated reel and real film destination after import. Earlier failed or interrupted attempts are not counted as passes.
+
+Public entrance, catalogue, details and desktop/mobile import screenshots were visually inspected. The [current collection screenshot](media/tmdb-collection.png) is included in the repository. The final database check confirmed all 50 films still use TMDB metadata, the original 18-film backup is present without credential properties, and no disposable test accounts remain. Configured secrets were absent from tracked/new source and built public assets.
+
+The laptop uses the optional low-memory Compose profile, with the unrelated Maher stack stopped temporarily. The catalogue persisted through database/API restarts. TMDB data is cached in Neo4j; routine browsing and recommendations do not call the provider API. Public posters remain an external image dependency and have local fallbacks. External Google/GitHub browser scenarios still simulate provider completion; their results do not constitute a new live authorization check. Mobile tests use emulation. Public certificate issuance, real-user recommendation relevance and backup restoration remain outside this update's verification.
+
 ## GitHub OAuth2 sign-in — 14 September 2026
 
 Added GitHub authorization-code sign-in independently of Google, with verified primary email, stable numeric identity, explicit password/2FA-protected linking, provider-specific connection flags, and disconnect with session revocation. Both providers can connect to the same Neo4flix account. [GitHub setup and security](github-oauth2.md).

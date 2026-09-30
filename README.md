@@ -20,9 +20,17 @@ _Recorded from the running application. The animation is rendered live with Thre
 
 </div>
 
-Neo4flix turns movie ratings into a personalized discovery experience. Browse an 18-film starter catalogue, save a watchlist, rate what you have seen, and find new films through shared interests in a graph. The project brings together graph modelling, REST microservices, authentication, frontend design, and container deployment.
+Neo4flix turns movie ratings into a personalized discovery experience. Import a real TMDB catalogue with official movie posters, save a watchlist, rate what you have seen, and find new films through shared interests in a graph. The project brings together graph modelling, REST microservices, authentication, frontend design, and container deployment.
 
 It is a movie recommendation application; movie playback is outside its scope. The repository runs locally with Docker and includes configuration for deployment to your own server.
+
+## Real movies from TMDB
+
+Neo4flix imports movie information from TMDB on the server, then stores it in Neo4j. Posters load from TMDB’s image CDN. The public cinema entrance, catalogue, details, ratings, and 3D film strip use the current collection.
+
+[Configure the TMDB token and import films](docs/tmdb.md). Existing films remain available until a complete preview is ready. Replacement saves a private backup and preserves accounts, authentication and 2FA; movie-related ratings, watchlists and shared links are reset. New clones have an offline starter catalogue until an administrator imports TMDB data.
+
+Movie information and images are provided by TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. The app includes a public **Movie data & credits** page. TMDB scores are shown out of 10; Neo4flix user ratings remain out of 5.
 
 ## What you can do
 
@@ -37,13 +45,19 @@ It is a movie recommendation application; movie playback is outside its scope. T
 | **Manage your account**      | Edit your profile, change your password, enable authenticator-app 2FA, connect/disconnect Google or GitHub sign-in, or delete your account.       |
 | **Sign in with Google**      | Optional OAuth2 / OpenID Connect login with explicit account linking and local 2FA. [Configure your Google client](docs/oauth2.md).               |
 | **Sign in with GitHub**      | Optional OAuth2 login with verified primary email, explicit account linking and local 2FA. [Configure your GitHub client](docs/github-oauth2.md). |
-| **Administer the catalogue** | Administrators can add, edit, and remove films.                                                                                                   |
+| **Administer the catalogue** | Administrators can add, edit, and remove films, or preview and replace the catalogue with up to 50 TMDB films.                                                                                                   |
 | **Inspect the graph**        | Administrators can explore live Movie, Genre and User nodes with rating values and timestamps.                                                    |
 
 The public entrance and signed-in Discover page share a real 3D reel, a moving film strip, and a camera transition through the reel's centre. Mobile has its own composition. The reel stays animated while visible, including when the system requests reduced motion, and its pinned stage fills the current viewport without an empty strip below it. Keyboard skip links lead directly to the catalogue; a static fallback handles unavailable graphics. Other page transitions still respect reduced-motion preferences.
 
 <details>
 <summary><strong>See the application screenshots</strong></summary>
+
+### TMDB collection
+
+![The running cinema entrance shows real posters and metadata for Avengers: Infinity War, Avengers: Endgame and Blade Runner 2049.](docs/media/tmdb-collection.png)
+
+Captured from the imported catalogue on 30 September 2026. Movie data and posters are provided by TMDB.
 
 ### Discover
 
@@ -53,13 +67,15 @@ The public entrance and signed-in Discover page share a real 3D reel, a moving f
 
 ![Recommendations page with genre filters, movie artwork, rating information, and reasons for each suggestion.](docs/media/recommendations.png)
 
-Screenshots use isolated demonstration accounts. The geometric artwork is original project artwork, rather than official movie posters.
+Screenshots use isolated demonstration accounts. These earlier screenshots show original project illustrations. Configuring TMDB replaces the catalogue with live movie metadata and official posters.
 
 </details>
 
 ## Quick start
 
 **You need:** Git and Docker Desktop in Linux-container mode, or Docker Engine with Compose 2.24.4+. Allow about **5 GB of available Docker memory** for the full stack. The container build supplies Java, Maven, and Node; you do not need to install them separately to run the application.
+
+For a small development catalogue on a laptop with limited memory, `compose.low-memory.yaml` lowers the graph and API memory limits. After setup, start it with `docker compose -f compose.yaml -f compose.low-memory.yaml up --build -d --wait`. Run other full application stacks separately. This profile does not establish production capacity.
 
 ### Windows · PowerShell
 
@@ -215,7 +231,7 @@ Security changes and logout revoke existing account sessions. Private rating not
 
 ## Testing
 
-The fresh Docker rebuild passed **14 unit tests**, **58 live HTTPS API assertions**, **700 bounded stress requests**, and **all 14 desktop/mobile browser scenarios** on **14 September 2026**. Browser certificate validation was enabled. Windows and the in-app browser also opened the local HTTPS site successfully. These are recorded development results, not a live CI badge. The [validation report](docs/validation.md) records individual runs, fixes, reruns, and limitations.
+The TMDB update passed **48 unit/protocol tests**, **59 live HTTPS API assertions**, **700 bounded stress requests**, and **all 40 desktop/mobile browser scenarios** on **30 September 2026** against the imported 50-film catalogue. Certificate and hostname verification stayed enabled. These are recorded development results, not a live CI badge. The [validation report](docs/validation.md) records individual runs, fixes, reruns, and limitations; external OAuth browser scenarios explicitly simulate provider completion.
 
 ### Backend
 
